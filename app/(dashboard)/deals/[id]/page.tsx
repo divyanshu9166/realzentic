@@ -1,0 +1,380 @@
+/**
+ * Deal detail view (Req 4.7).
+ *
+ * Server component: loads the deal detail bundle via `getDealDetail` and
+ * renders the four required panels — the activity timeline, documents,
+ * milestone tracker, and cost-sheet viewer. Decimal columns are read on the
+ * server (so `Number(...)` resolves a real value) and only display strings
+ * reach the markup.
+ */
+
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import {
+    ArrowLeft,
+    Activity,
+    FileText,
+    Milestone,
+    ReceiptIndianRupee,
+    Flame,
+    AlertTriangle,
+    CheckCircle2,
+    Clock,
+    ExternalLink,
+} from 'lucide-react';
+import { getDealDetail } from '@/app/actions/deals';
+import AiMatchPanel from '@/components/AiMatchPanel';
+
+export const dynamic = 'force-dynamic';
+
+function num(value: unknown): number {
+    return value == null ? 0 : Number(value);
+}
+
+function formatINR(value: unknown): string {
+    return `₹${num(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(value: Date | string | null | undefined): string {
+    if (!value) return '—';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime())
+        ? '—'
+        : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatDateTime(value: Date | string | null | undefined): string {
+    if (!value) return '—';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime())
+        ? '—'
+        : d.toLocaleString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+}
+
+const MILESTONE_STATUS_CLASSES: Record<string, string> = {
+    Upcoming: 'bg-slate-500/10 text-slate-600',
+    Due: 'bg-amber-500/10 text-amber-700',
+    Overdue: 'bg-red-500/10 text-red-600',
+    Paid: 'bg-emerald-500/10 text-emerald-700',
+    Partially_Paid: 'bg-blue-500/10 text-blue-700',
+};
+
+const DOC_STATUS_CLASSES: Record<string, string> = {
+    Pending: 'bg-amber-500/10 text-amber-700',
+    Verified: 'bg-emerald-500/10 text-emerald-700',
+    Rejected: 'bg-red-500/10 text-red-600',
+    Expired: 'bg-slate-500/10 text-slate-600',
+};
+
+function formatFileSize(bytes: number): string {
+    if (!bytes) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export default async function DealDetailPage({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}) {
+    const { id } = await params;
+    const dealId = Number(id);
+
+    if (!Number.isInteger(dealId) || dealId < 1) {
+        notFound();
+    }
+
+    const res = await getDealDetail(dealId);
+
+    if (!res.success || !res.data) {
+        return (
+            <div className="space-y-6">
+                <Link
+                    href="/deals"
+                    className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent-hover"
+                >
+                    <ArrowLeft className="h-4 w-4" /> Back to pipeline
+                </Link>
+                <div className="glass-card py-16 text-center text-muted">
+                    <p className="font-medium">Deal not found</p>
+                    <p className="mt-1 text-sm">{res.error ?? 'This deal may have been removed.'}</p>
+                </div>
+            </div>
+        );
+    }
+
+    const { deal, timeline, documents, milestones, costSheet } = res.data;
+
+    return (
+        <div className="space-y-6">
+            <Link
+                href="/deals"
+                className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent-hover"
+            >
+                <ArrowLeft className="h-4 w-4" /> Back to pipeline
+            </Link>
+
+            {/* Summary header */}
+            <div className="glass-card p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-xl md:text-2xl font-bold text-foreground">
+                                {deal.contact?.name ?? 'Unknown contact'}
+                            </h1>
+                            <span
+                                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                                style={{ backgroundColor: deal.stage?.color ?? '#888888' }}
+                            >
+                                {deal.stage?.name ?? 'No stage'}
+                            </span>
+                            {deal.isHot && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 text-[11px] font-medium text-orange-600">
+                                    <Flame className="h-3 w-3" /> Hot
+                                </span>
+                            )}
+                            {deal.isAtRisk && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600">
+                                    <AlertTriangle className="h-3 w-3" /> At risk
+                                </span>
+                            )}
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+                            {deal.contact?.phone && <span>{deal.contact.phone}</span>}
+                            {deal.unit?.unitNumber && <span>Unit {deal.unit.unitNumber}</span>}
+                            {deal.assignedAgent?.name && <span>Agent: {deal.assignedAgent.name}</span>}
+                            {deal.channelPartner?.name && <span>Partner: {deal.channelPartner.name}</span>}
+                            {deal.source && <span>Source: {deal.source}</span>}
+                            <span>Expected close: {formatDate(deal.expectedCloseDate)}</span>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-2xl font-bold text-foreground">{formatINR(deal.value)}</p>
+                        {typeof deal.aiScore === 'number' && (
+                            <p className="mt-1 text-xs text-muted">AI score: {deal.aiScore}</p>
+                        )}
+                    </div>
+                </div>
+                {deal.lostReason && (
+                    <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-600">
+                        Lost reason: {deal.lostReason}
+                    </div>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                {/* Activity timeline */}
+                <div className="glass-card p-5 lg:col-span-2">
+                    <div className="mb-4 flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-accent" />
+                        <h2 className="text-base font-semibold text-foreground">Activity Timeline</h2>
+                        <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                            {timeline.length}
+                        </span>
+                    </div>
+                    {timeline.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-muted">No activity recorded yet.</p>
+                    ) : (
+                        <ol className="relative space-y-4 border-l border-border pl-5">
+                            {timeline.map((event) => (
+                                <li key={event.id} className="relative">
+                                    <span className="absolute -left-[27px] top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-accent bg-surface" />
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-accent">
+                                            {event.type.replace(/_/g, ' ')}
+                                        </span>
+                                        <span className="text-[11px] text-muted">{formatDateTime(event.createdAt)}</span>
+                                    </div>
+                                    <p className="mt-0.5 text-sm text-foreground">{event.description}</p>
+                                </li>
+                            ))}
+                        </ol>
+                    )}
+                </div>
+
+                {/* Right column: milestones + documents */}
+                <div className="space-y-5">
+                    {/* Milestone tracker */}
+                    <div className="glass-card p-5">
+                        <div className="mb-4 flex items-center gap-2">
+                            <Milestone className="h-4 w-4 text-accent" />
+                            <h2 className="text-base font-semibold text-foreground">Milestone Tracker</h2>
+                        </div>
+                        {milestones.length === 0 ? (
+                            <p className="py-6 text-center text-sm text-muted">
+                                No payment milestones yet. Convert this deal to a booking to generate a schedule.
+                            </p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {milestones.map((m) => {
+                                    const amount = num(m.amount);
+                                    const paid = num(m.paidAmount);
+                                    const pct = amount > 0 ? Math.min(100, Math.round((paid / amount) * 100)) : 0;
+                                    const statusClass =
+                                        MILESTONE_STATUS_CLASSES[m.status] ?? 'bg-slate-500/10 text-slate-600';
+                                    return (
+                                        <li key={m.id} className="rounded-lg border border-border bg-surface/60 p-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <p className="text-sm font-medium text-foreground">{m.name}</p>
+                                                <span
+                                                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClass}`}
+                                                >
+                                                    {m.status.replace(/_/g, ' ')}
+                                                </span>
+                                            </div>
+                                            <div className="mt-1 flex items-center justify-between text-[11px] text-muted">
+                                                <span>Due {formatDate(m.dueDate)}</span>
+                                                <span>
+                                                    {formatINR(paid)} / {formatINR(amount)}
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
+                                                <div
+                                                    className="h-full rounded-full bg-accent transition-all"
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* Documents */}
+                    <div className="glass-card p-5">
+                        <div className="mb-4 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-accent" />
+                            <h2 className="text-base font-semibold text-foreground">Documents</h2>
+                            <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                                {documents.length}
+                            </span>
+                        </div>
+                        {documents.length === 0 ? (
+                            <p className="py-6 text-center text-sm text-muted">No documents attached.</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {documents.map((doc) => {
+                                    const statusClass =
+                                        DOC_STATUS_CLASSES[doc.status] ?? 'bg-slate-500/10 text-slate-600';
+                                    return (
+                                        <li
+                                            key={doc.id}
+                                            className="flex items-center gap-3 rounded-lg border border-border bg-surface/60 p-2.5"
+                                        >
+                                            <FileText className="h-4 w-4 flex-shrink-0 text-muted" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-medium text-foreground">{doc.fileName}</p>
+                                                <p className="text-[11px] text-muted">
+                                                    {doc.type} · {formatFileSize(doc.fileSize)}
+                                                </p>
+                                            </div>
+                                            <span
+                                                className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClass}`}
+                                            >
+                                                {doc.status}
+                                            </span>
+                                            <a
+                                                href={doc.fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-shrink-0 text-muted hover:text-accent"
+                                                title="Open document"
+                                            >
+                                                <ExternalLink className="h-4 w-4" />
+                                            </a>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Cost-sheet viewer */}
+            <div className="glass-card p-5">
+                <div className="mb-4 flex items-center gap-2">
+                    <ReceiptIndianRupee className="h-4 w-4 text-accent" />
+                    <h2 className="text-base font-semibold text-foreground">Cost Sheet</h2>
+                </div>
+                {!costSheet ? (
+                    <p className="py-6 text-center text-sm text-muted">
+                        No cost sheet generated for this deal&apos;s unit and buyer yet.
+                    </p>
+                ) : (
+                    <div className="space-y-4">
+                        <dl className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+                            {[
+                                ['Base cost', costSheet.baseCost],
+                                ['Floor rise', costSheet.floorRise],
+                                ['View premium', costSheet.viewPremium],
+                                ['Parking charges', costSheet.parkingCharges],
+                                ['Clubhouse charges', costSheet.clubhouseCharges],
+                                ['Legal charges', costSheet.legalCharges],
+                                ['Stamp duty', costSheet.stampDuty],
+                                ['GST', costSheet.gst],
+                                ['Registration charges', costSheet.registrationCharges],
+                                ['Discount', costSheet.discount],
+                            ].map(([label, value]) => (
+                                <div
+                                    key={label as string}
+                                    className="flex items-center justify-between border-b border-border/60 py-1.5"
+                                >
+                                    <dt className="text-sm text-muted">{label as string}</dt>
+                                    <dd className="text-sm font-medium text-foreground">{formatINR(value)}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                        <div className="flex flex-col gap-2 rounded-xl bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center justify-between gap-6">
+                                <span className="text-sm text-muted">Total</span>
+                                <span className="text-base font-semibold text-foreground">
+                                    {formatINR(costSheet.total)}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-6">
+                                <span className="text-sm text-muted">Net payable</span>
+                                <span className="text-lg font-bold text-accent">{formatINR(costSheet.netPayable)}</span>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 text-[11px] text-muted">
+                            <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> Generated {formatDate(costSheet.generatedAt)}
+                            </span>
+                            {costSheet.pdfUrl && (
+                                <a
+                                    href={costSheet.pdfUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-accent hover:text-accent-hover"
+                                >
+                                    <CheckCircle2 className="h-3 w-3" /> View PDF
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* AI-suggested units — Req 16.5 */}
+            <div className="glass-card p-5">
+                <AiMatchPanel
+                    preferences={{
+                        maxBudget: num(deal.value) > 0 ? num(deal.value) : undefined,
+                        type: deal.unit?.type ? [deal.unit.type] : undefined,
+                    }}
+                    buyerName={deal.contact?.name ?? undefined}
+                    buyerPhone={deal.contact?.phone ?? undefined}
+                />
+            </div>
+        </div>
+    );
+}

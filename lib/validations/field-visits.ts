@@ -1,0 +1,152 @@
+import { z } from 'zod'
+import { idSchema, moneyAmount, rating } from '@/lib/validations/common'
+
+/**
+ * Zod schemas for Site Visit 2.0 (Module 9) server actions.
+ *
+ * These validate the inputs to the OTP check-in, geo check-in, structured
+ * feedback, and follow-up/deal creation flows before any database write
+ * (Requirements 12.2–12.6, 20.4). The geometric/OTP/analytics math itself
+ * lives in the pure helpers in `lib/geo.ts`.
+ */
+
+/** A latitude in the valid WGS-84 range. */
+const latitude = z
+    .number({ message: 'Latitude must be a number' })
+    .finite('Latitude must be a finite number')
+    .min(-90, 'Latitude must be ≥ -90')
+    .max(90, 'Latitude must be ≤ 90')
+
+/** A longitude in the valid WGS-84 range. */
+const longitude = z
+    .number({ message: 'Longitude must be a number' })
+    .finite('Longitude must be a finite number')
+    .min(-180, 'Longitude must be ≥ -180')
+    .max(180, 'Longitude must be ≤ 180')
+
+/**
+ * A phone number for OTP delivery. Accepts loose input (the action normalizes
+ * it to E.164 before sending); only requires enough digits to be plausible.
+ */
+const phone = z
+    .string({ message: 'A phone number is required' })
+    .trim()
+    .min(8, 'Phone number is too short')
+    .max(20, 'Phone number is too long')
+
+// ─── Send check-in OTP (Req 12.2) ────────────────────
+
+export const sendCheckinOtpSchema = z.object({
+    visitId: idSchema,
+    buyerPhone: phone,
+    /** Optional digit count for the OTP (defaults to 6 in the action). */
+    otpLength: z.number().int().min(4).max(8).optional(),
+})
+
+export type SendCheckinOtpInput = z.infer<typeof sendCheckinOtpSchema>
+
+// ─── Verify check-in OTP (Req 12.3) ──────────────────
+
+export const verifyCheckinOtpSchema = z.object({
+    visitId: idSchema,
+    enteredOtp: z
+        .string({ message: 'Enter the OTP' })
+        .trim()
+        .min(4, 'OTP is too short')
+        .max(8, 'OTP is too long'),
+})
+
+export type VerifyCheckinOtpInput = z.infer<typeof verifyCheckinOtpSchema>
+
+// ─── Geo check-in (Req 12.4) ─────────────────────────
+
+export const geoCheckinSchema = z.object({
+    visitId: idSchema,
+    agentLat: latitude,
+    agentLng: longitude,
+    /**
+     * Project coordinates. Optional — when omitted the action resolves them
+     * from the visit's linked project. The check-in is rejected if neither a
+     * supplied nor a stored project location is available.
+     */
+    projectLat: latitude.optional(),
+    projectLng: longitude.optional(),
+    /** Geofence radius in meters; defaults to 500 in the action (Req 12.4). */
+    radiusM: z.number().finite().positive().max(100_000).optional(),
+})
+
+export type GeoCheckinInput = z.infer<typeof geoCheckinSchema>
+
+// ─── Structured feedback + follow-up/deal (Req 12.5) ─
+
+/**
+ * The follow-up action selected at the end of a visit. `Deal` creates a deal
+ * for the buyer; `FollowUp` schedules a lead follow-up; `None` records the
+ * feedback without any downstream record.
+ */
+export const followUpActionEnum = z.enum(['Deal', 'FollowUp', 'None'])
+
+export type FollowUpAction = z.infer<typeof followUpActionEnum>
+
+export const submitVisitFeedbackSchema = z
+    .object({
+        visitId: idSchema,
+        buyerRating: rating.optional(),
+        feedbackLiked: z.string().trim().max(2000).optional(),
+        feedbackDisliked: z.string().trim().max(2000).optional(),
+        feedbackConcerns: z.string().trim().max(2000).optional(),
+        visitDurationMin: z
+            .number({ message: 'Duration must be a number' })
+            .int('Duration must be whole minutes')
+            .min(0, 'Duration cannot be negative')
+            .max(24 * 60, 'Duration is unrealistically long')
+            .optional(),
+        followUpAction: followUpActionEnum.default('None'),
+
+        // ── Deal creation inputs (required when followUpAction === 'Deal') ──
+        contactId: idSchema.optional(),
+        stageId: idSchema.optional(),
+        dealValue: moneyAmount.optional(),
+        unitId: idSchema.optional(),
+        assignedAgentId: idSchema.optional(),
+
+        // ── Follow-up inputs (required when followUpAction === 'FollowUp') ──
+        leadId: idSchema.optional(),
+        followUpDate: z.string().datetime({ message: 'Follow-up date must be an ISO datetime' }).optional(),
+        followUpMessage: z.string().trim().min(1, 'A follow-up message is required').max(2000).optional(),
+        followUpDay: z.number().int().min(0).max(365).optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (data.followUpAction === 'Deal') {
+            if (data.contactId === undefined) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['contactId'], message: 'A contact is required to create a deal' })
+            }
+            if (data.stageId === undefined) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['stageId'], message: 'A pipeline stage is required to create a deal' })
+            }
+            if (data.dealValue === undefined) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['dealValue'], message: 'A deal value is required to create a deal' })
+            }
+        }
+        if (data.followUpAction === 'FollowUp') {
+            if (data.leadId === undefined) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['leadId'], message: 'A lead is required to schedule a follow-up' })
+            }
+            if (data.followUpMessage === undefined) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['followUpMessage'], message: 'A follow-up message is required' })
+            }
+        }
+    })
+
+export type SubmitVisitFeedbackInput = z.infer<typeof submitVisitFeedbackSchema>
+
+// ─── Visit analytics query (Req 12.6) ────────────────
+
+export const visitAnalyticsSchema = z.object({
+    staffId: idSchema.optional(),
+    projectId: idSchema.optional(),
+    startDate: z.string().datetime().optional(),
+    endDate: z.string().datetime().optional(),
+})
+
+export type VisitAnalyticsInput = z.infer<typeof visitAnalyticsSchema>
