@@ -43,7 +43,7 @@ type ActionResult<T> =
     | { success: false; error: string }
 
 /** Default number of entries returned per page for infinite scroll (Req 14.5). */
-export const DEFAULT_TIMELINE_PAGE_SIZE = 20
+const DEFAULT_TIMELINE_PAGE_SIZE = 20
 
 /** The set of valid timeline entry types, used to validate the optional filter. */
 const VALID_TYPES: ReadonlySet<TimelineEntryType> = new Set<TimelineEntryType>([

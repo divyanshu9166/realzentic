@@ -97,9 +97,12 @@ export async function upsertPortalConfig(data: unknown): Promise<Result<{ id: nu
         },
         update: {
             enabled,
-            apiKey: apiKey ?? null,
             webhookUrl: webhookUrl ?? null,
             autoAssignStaffId: autoAssignStaffId ?? null,
+            // Only overwrite the stored API key when a new one was provided —
+            // the admin UI masks the saved secret and omits it on re-save, so
+            // omitting it must preserve (not clear) the existing key.
+            ...(apiKey !== undefined ? { apiKey } : {}),
         },
         select: { id: true },
     })

@@ -41,6 +41,7 @@
   ],
   "exclude": [
     "node_modules",
-    "ai-agent"
+    "ai-agent",
+    "prisma/seed.ts"
   ]
 }

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         contactId: contact.id,
         date: new Date(date),
         time: time,
-        purpose: purpose || 'Showroom Visit',
+        purpose: purpose || 'Site Visit',
         notes: notes || 'Booked via AI Agent Anushka',
         status: 'Scheduled',
       },

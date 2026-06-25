@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption'
 import { getMediaUrl } from '@/lib/whatsapp/meta-api'
 import { normalizePhone, phonesMatch } from '@/lib/whatsapp/phone-utils'
-import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature'
+import { verifyWhatsAppWebhookSignature } from '@/lib/whatsapp/webhook-secret'
 import { runAutomationsForTrigger, hasMatchingKeywordAutomation } from '@/lib/automations/engine'
 import { prisma } from '@/lib/db'
 import { publishEvent } from '@/lib/redis'
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
   const rawBody = await request.text()
   const signature = request.headers.get('x-hub-signature-256')
 
-  if (!verifyMetaWebhookSignature(rawBody, signature)) {
+  if (!(await verifyWhatsAppWebhookSignature(rawBody, signature))) {
     // 401 (not 200) — we want Meta's delivery dashboard to show failures
     // loudly if a misconfiguration causes signatures to stop matching,
     // rather than silently eating events.
@@ -331,11 +331,11 @@ async function handleStatusUpdate(status: {
     }
 
     const s = (k: string) => countByStatus[k] ?? 0
-    const sent_count      = s('sent') + s('delivered') + s('read') + s('replied')
+    const sent_count = s('sent') + s('delivered') + s('read') + s('replied')
     const delivered_count = s('delivered') + s('read') + s('replied')
-    const read_count      = s('read') + s('replied')
-    const replied_count   = s('replied')
-    const failed_count    = s('failed')
+    const read_count = s('read') + s('replied')
+    const replied_count = s('replied')
+    const failed_count = s('failed')
 
     await prisma.waBroadcast.update({
       where: { id: broadcastId },
@@ -390,11 +390,11 @@ async function flagBroadcastReplyIfAny(userId: string, contactId: string) {
     await prisma.waBroadcast.update({
       where: { id: broadcastId },
       data: {
-        sent_count:      s('sent') + s('delivered') + s('read') + s('replied'),
+        sent_count: s('sent') + s('delivered') + s('read') + s('replied'),
         delivered_count: s('delivered') + s('read') + s('replied'),
-        read_count:      s('read') + s('replied'),
-        replied_count:   s('replied'),
-        failed_count:    s('failed'),
+        read_count: s('read') + s('replied'),
+        replied_count: s('replied'),
+        failed_count: s('failed'),
       },
     })
   } catch (err) {
@@ -998,11 +998,11 @@ async function syncInboundInquiryToCrm({
     const candidates = await prisma.contact.findMany({
       where: last10
         ? {
-            OR: [
-              { phone: normalizedPhone },
-              { phone: { contains: last10 } },
-            ],
-          }
+          OR: [
+            { phone: normalizedPhone },
+            { phone: { contains: last10 } },
+          ],
+        }
         : { phone: normalizedPhone },
       select: { id: true, phone: true, name: true, source: true },
       take: 10,

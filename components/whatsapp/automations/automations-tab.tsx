@@ -96,7 +96,14 @@ export function AutomationsTab() {
         prev?.map((x) => (x.id === a.id ? { ...x, is_active: !next } : x)) ?? prev,
       )
       const body = await res.json().catch(() => ({}))
-      toast.error(body?.error ?? "Failed to update")
+      // Surface the first specific validation issue when the server returns one
+      const firstIssue = body?.issues?.[0]
+      toast.error(
+        firstIssue?.message
+          ? firstIssue.message
+          : (body?.error ?? "Failed to update"),
+        firstIssue?.path ? { description: `at ${firstIssue.path}` } : undefined,
+      )
       return
     }
     toast.success(next ? "Automation activated" : "Automation paused")

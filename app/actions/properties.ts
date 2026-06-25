@@ -31,6 +31,7 @@ import { revalidatePath } from 'next/cache'
 
 import { prisma } from '@/lib/db'
 import { getSession } from '@/lib/auth-helpers'
+import { groqChat } from '@/lib/ai-agent/groq'
 import { idSchema, moneyAmount, percentage, unitStatusEnum } from '@/lib/validations/common'
 import {
     createFloorSchema,
@@ -218,6 +219,8 @@ export async function createUnit(data: unknown): Promise<Result<unknown>> {
     try {
         const unit = await prisma.unit.create({ data: unitData })
         revalidatePath(PROPERTIES_PATH)
+        // Fire-and-forget: notify waitlisted buyers about the new unit (Feature B)
+        notifyWaitlistOnNewUnit(unit.id).catch(console.error)
         return { success: true, data: serializeUnit(unit) }
     } catch (err) {
         if (isUniqueViolation(err)) {
@@ -1753,4 +1756,217 @@ export async function shareCostSheet(
     } catch (err) {
         return { success: false, error: errorMessage(err, 'Failed to share cost sheet') }
     }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// AI-GENERATED PROPERTY DESCRIPTIONS (Unique edge #22)
+//
+// One-click brochure/listing copy generation per unit. Uses the same
+// Groq (Llama) client the WhatsApp/social AI agent uses (lib/ai-agent/groq),
+// and degrades gracefully to a deterministic, template-built description when
+// no GROQ_API_KEY is configured or the model call fails — so the feature is
+// always usable, never blocking.
+// ═══════════════════════════════════════════════════════════
+
+const UNIT_TYPE_LABELS: Record<string, string> = {
+    BHK1: '1 BHK apartment',
+    BHK2: '2 BHK apartment',
+    BHK3: '3 BHK apartment',
+    BHK4: '4 BHK apartment',
+    Shop: 'retail shop',
+    Office: 'office space',
+    Plot: 'plot',
+}
+
+const FACING_LABELS: Record<string, string> = {
+    N: 'North', S: 'South', E: 'East', W: 'West',
+    NE: 'North-East', NW: 'North-West', SE: 'South-East', SW: 'South-West',
+}
+
+/** Compact INR formatting (e.g. ₹85.0 L, ₹1.25 Cr) for listing copy. */
+function formatIndianPrice(amount: number): string {
+    if (!Number.isFinite(amount) || amount <= 0) return 'Price on request'
+    if (amount >= 1e7) return `₹${(amount / 1e7).toFixed(2)} Cr`
+    if (amount >= 1e5) return `₹${(amount / 1e5).toFixed(1)} L`
+    return `₹${Math.round(amount).toLocaleString('en-IN')}`
+}
+
+/** Deterministic fallback copy built purely from the unit's facts. */
+function templateUnitDescription(facts: {
+    typeLabel: string
+    projectName: string
+    location: string
+    city: string | null
+    floorNumber: number
+    superBuiltUpArea: number
+    carpetArea: number
+    facingLabel: string
+    priceLabel: string
+    amenities: string[]
+}): string {
+    const where = [facts.location, facts.city].filter(Boolean).join(', ')
+    const amenityLine =
+        facts.amenities.length > 0
+            ? ` Residents enjoy ${facts.amenities.slice(0, 6).join(', ')}.`
+            : ''
+    return (
+        `Presenting a ${facts.facingLabel}-facing ${facts.typeLabel} at ${facts.projectName}` +
+        `${where ? `, ${where}` : ''}. Set on floor ${facts.floorNumber}, this home offers ` +
+        `${facts.superBuiltUpArea} sq.ft. of super built-up area (${facts.carpetArea} sq.ft. carpet), ` +
+        `thoughtfully planned for natural light and ventilation.${amenityLine} ` +
+        `Priced at ${facts.priceLabel}. Contact us today to schedule a site visit.`
+    ).replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Generate marketing/listing copy for a single unit (Unique edge #22).
+ *
+ * Loads the unit with its parent tower/project context, asks the Groq Llama
+ * model for a polished 2–4 sentence description, and returns the text. If the
+ * model is unavailable (no API key / network / quota), it falls back to a
+ * deterministic template so the caller always receives usable copy.
+ *
+ * Returns `{ description, source }` where `source` is `'ai'` or `'template'`.
+ */
+export async function generateUnitDescription(
+    unitId: unknown,
+): Promise<Result<{ description: string; source: 'ai' | 'template' }>> {
+    const parsed = idSchema.safeParse(unitId)
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
+
+    const unit = await prisma.unit.findUnique({
+        where: { id: parsed.data },
+        include: { tower: { include: { project: true } } },
+    })
+    if (!unit) return { success: false, error: 'Unit not found' }
+
+    const project = unit.tower?.project ?? null
+    const facts = {
+        typeLabel: UNIT_TYPE_LABELS[unit.type] ?? unit.type,
+        projectName: project?.name ?? 'our project',
+        location: project?.location ?? '',
+        city: project?.city ?? null,
+        floorNumber: unit.floorNumber,
+        superBuiltUpArea: unit.superBuiltUpArea,
+        carpetArea: unit.carpetArea,
+        facingLabel: FACING_LABELS[unit.facing] ?? unit.facing,
+        priceLabel: formatIndianPrice(Number(unit.totalPrice)),
+        amenities: project?.amenities ?? [],
+    }
+
+    const fallback = templateUnitDescription(facts)
+
+    // Build a tight, fact-grounded prompt so the model embellishes only the
+    // tone, never the facts (no invented amenities, prices, or locations).
+    const prompt =
+        `Write an appealing but factual real-estate listing description (2 to 4 sentences, ` +
+        `no markdown, no bullet points, no emojis) for the following unit. ` +
+        `Use ONLY these facts and do not invent any detail:\n` +
+        `- Type: ${facts.typeLabel}\n` +
+        `- Project: ${facts.projectName}\n` +
+        `- Location: ${[facts.location, facts.city].filter(Boolean).join(', ') || 'not specified'}\n` +
+        `- Floor: ${facts.floorNumber}\n` +
+        `- Super built-up area: ${facts.superBuiltUpArea} sq.ft.\n` +
+        `- Carpet area: ${facts.carpetArea} sq.ft.\n` +
+        `- Facing: ${facts.facingLabel}\n` +
+        `- Price: ${facts.priceLabel}\n` +
+        `- Amenities: ${facts.amenities.length ? facts.amenities.join(', ') : 'none listed'}\n` +
+        `End with a brief call to action to book a site visit.`
+
+    try {
+        const raw = await groqChat({
+            messages: [{ role: 'user', content: prompt }],
+            maxTokens: 220,
+            temperature: 0.6,
+        })
+        const description = raw.trim()
+        if (!description) return { success: true, data: { description: fallback, source: 'template' } }
+        return { success: true, data: { description, source: 'ai' } }
+    } catch (err) {
+        console.warn(
+            '[properties] AI description generation fell back to template:',
+            err instanceof Error ? err.message : err,
+        )
+        return { success: true, data: { description: fallback, source: 'template' } }
+    }
+}
+
+// ===========================================================================
+// Feature B — Automated Property Alerts (new inventory → matching buyers)
+// ===========================================================================
+
+/**
+ * Notify waitlisted buyers when a new unit is created in a matching project.
+ *
+ * Steps:
+ *  1. Load the new unit with its type, location (tower → project) and price.
+ *  2. Query UnitWaitlist for entries where projectId matches the unit's tower's
+ *     projectId and status = 'Waiting'.
+ *  3. For each matching entry load the contact's phone.
+ *  4. Create an in-app Notification (type: 'property_available') for the contact.
+ *  5. Return { notified: number }.
+ *
+ * This function is fire-and-forget from createUnit — errors are logged but
+ * never bubble up to the caller.
+ */
+export async function notifyWaitlistOnNewUnit(
+    unitId: number
+): Promise<{ notified: number }> {
+    // 1. Load the new unit with project context
+    const unit = await prisma.unit.findUnique({
+        where: { id: unitId },
+        select: {
+            id: true,
+            unitNumber: true,
+            type: true,
+            totalPrice: true,
+            tower: {
+                select: {
+                    projectId: true,
+                    project: { select: { name: true, location: true } },
+                },
+            },
+        },
+    })
+
+    if (!unit) return { notified: 0 }
+
+    const projectId = unit.tower.projectId
+
+    // 2. Find waitlist entries for this project that are still waiting
+    const waitlistEntries = await prisma.unitWaitlist.findMany({
+        where: {
+            projectId,
+            status: 'Waiting',
+        },
+        select: {
+            id: true,
+            contactId: true,
+            contact: { select: { id: true, phone: true } },
+        },
+    })
+
+    if (waitlistEntries.length === 0) return { notified: 0 }
+
+    // 3 & 4. For each entry create an in-app notification
+    const notifications = waitlistEntries.map((entry) => ({
+        type: 'property_available',
+        title: 'New unit available',
+        subtitle: `Unit ${unit.unitNumber} matching your preference is now available`,
+        href: `/properties?unit=${unit.id}`,
+        metadata: {
+            unitId: unit.id,
+            unitNumber: unit.unitNumber,
+            unitType: unit.type,
+            projectId,
+            projectName: unit.tower.project.name,
+            contactId: entry.contact.id,
+            contactPhone: entry.contact.phone,
+        },
+    }))
+
+    await prisma.notification.createMany({ data: notifications })
+
+    return { notified: notifications.length }
 }

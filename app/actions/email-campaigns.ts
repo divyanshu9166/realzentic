@@ -430,7 +430,14 @@ export async function getCampaignAnalytics(campaignId: number) {
   })
 
   // A/B test breakdown
-  let abStats = null
+  type VariantStat = {
+    sent: number
+    opened: number
+    clicked: number
+    openRate: number
+    clickRate: number
+  }
+  let abStats: { A: VariantStat; B: VariantStat } | null = null
   if (campaign.isABTest) {
     const variantA = campaign.recipients.filter(r => r.variant === 'A')
     const variantB = campaign.recipients.filter(r => r.variant === 'B')

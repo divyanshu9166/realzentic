@@ -15,6 +15,13 @@ import { getStaff } from '@/app/actions/staff';
 import { useAlertToast } from '@/components/AlertToastProvider';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
+import {
+  PROPERTY_CONFIG_OPTIONS,
+  RE_BUDGET_RANGES,
+  PURPOSE_OPTIONS,
+  POSSESSION_OPTIONS,
+  composePreferenceNotes,
+} from '@/lib/real-estate-options';
 
 const walkinStatuses = ['All', 'Browsing', 'Interested', 'Follow-up', 'Converted', 'Left'];
 
@@ -48,7 +55,7 @@ const buildWalkinWhatsAppMessage = (walkin) => {
 export default function WalkinsPage() {
   const router = useRouter();
   const alertToast = useAlertToast?.() || { notify: (m) => alert(m) };
-  
+
   const [walkins, setWalkins] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +64,7 @@ export default function WalkinsPage() {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [selectedWalkin, setSelectedWalkin] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', requirement: '', budget: '', assignedToId: '', notes: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', requirement: '', budget: '', assignedToId: '', notes: '', purpose: '', possession: '', location: '' });
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [qrUrl, setQrUrl] = useState('');
@@ -74,7 +81,7 @@ export default function WalkinsPage() {
   }, []);
 
   const filtered = useMemo(() => walkins.filter(w => {
-    const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase()) || w.phone.includes(search) || w.requirement.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase()) || w.phone.includes(search) || (w.requirement || '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'All' || w.status === statusFilter;
     return matchesSearch && matchesStatus;
   }), [search, statusFilter, walkins]);
@@ -147,7 +154,7 @@ export default function WalkinsPage() {
         <p>Welcome! Please scan this QR code</p>
         <p>to register your visit</p>
         <img src="${qrDataUrl}" />
-        <p style="margin-top:16px;font-size:12px;color:#999;">Powered by Furzentic</p>
+        <p style="margin-top:16px;font-size:12px;color:#999;">Powered by Realzentic</p>
       </div></body></html>
     `);
     win.document.close();
@@ -175,13 +182,18 @@ export default function WalkinsPage() {
         requirement: form.requirement,
         budget: form.budget || undefined,
         assignedToId: form.assignedToId ? Number(form.assignedToId) : undefined,
-        notes: form.notes || undefined,
+        notes: composePreferenceNotes({
+          notes: form.notes,
+          purpose: form.purpose || undefined,
+          possession: form.possession || undefined,
+          location: form.location || undefined,
+        }) || undefined,
       };
       const res = await createWalkin(payload);
       if (res.success) {
         const refreshed = await getWalkins();
         if (refreshed.success) setWalkins(refreshed.data);
-        setForm({ name: '', phone: '', email: '', requirement: '', budget: '', assignedToId: '', notes: '' });
+        setForm({ name: '', phone: '', email: '', requirement: '', budget: '', assignedToId: '', notes: '', purpose: '', possession: '', location: '' });
         setShowRegisterModal(false);
         alertToast.notify?.('Walk-in registered successfully', 'success');
       }
@@ -199,7 +211,7 @@ export default function WalkinsPage() {
         name: selectedWalkin.name,
         phone: selectedWalkin.phone,
         email: selectedWalkin.email || undefined,
-        source: 'Showroom Visit',
+        source: 'Walk-in',
         interest: selectedWalkin.requirement,
         budget: selectedWalkin.budget || '',
         notes: `Converted from walk-in: ${selectedWalkin.notes || ''}`,
@@ -258,7 +270,7 @@ export default function WalkinsPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-8 w-48 bg-surface rounded-lg" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{[1,2,3,4].map(i => <div key={i} className="h-20 bg-surface rounded-2xl" />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-surface rounded-2xl" />)}</div>
         <div className="h-64 bg-surface rounded-2xl" />
       </div>
     );
@@ -282,17 +294,17 @@ export default function WalkinsPage() {
         </div>
       </div>
 
-        <Modal isOpen={!!walkinToDraft} onClose={cancelMoveToDraft} title="Move Walk-in to Draft" size="sm">
-          {walkinToDraft && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted">Move <strong className="text-foreground">{walkinToDraft.name}</strong> to drafts? It will be permanently deleted after 30 days.</p>
-              <div className="flex justify-end gap-3">
-                <button onClick={cancelMoveToDraft} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-surface-hover">Cancel</button>
-                <button onClick={confirmMoveToDraft} disabled={deletingWalkin} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm disabled:opacity-50">{deletingWalkin ? 'Moving...' : 'Move to Draft'}</button>
-              </div>
+      <Modal isOpen={!!walkinToDraft} onClose={cancelMoveToDraft} title="Move Walk-in to Draft" size="sm">
+        {walkinToDraft && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">Move <strong className="text-foreground">{walkinToDraft.name}</strong> to drafts? It will be permanently deleted after 30 days.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={cancelMoveToDraft} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-surface-hover">Cancel</button>
+              <button onClick={confirmMoveToDraft} disabled={deletingWalkin} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm disabled:opacity-50">{deletingWalkin ? 'Moving...' : 'Move to Draft'}</button>
             </div>
-          )}
-        </Modal>
+          </div>
+        )}
+      </Modal>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -332,47 +344,47 @@ export default function WalkinsPage() {
         <div className="overflow-x-auto">
           <table className="crm-table">
             <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Customer</th>
-                  <th>Phone</th>
-                  <th>Requirement</th>
-                  <th>Budget</th>
-                  <th>Assigned To</th>
-                  <th>Duration</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th className="text-right">Actions</th>
-                </tr>
+              <tr>
+                <th>Time</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Requirement</th>
+                <th>Budget</th>
+                <th>Assigned To</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th className="text-right">Actions</th>
+              </tr>
             </thead>
             <tbody>
               {filtered.map(w => {
                 const sc = statusConfig[w.status] || statusConfig.Browsing;
                 return (
-                          <tr key={w.id} className="cursor-pointer" onClick={() => setSelectedWalkin(w)}>
-                            <td className="text-foreground font-medium">{w.time}</td>
-                            <td className="font-medium text-foreground">{w.name}</td>
-                            <td className="text-muted">{w.phone}</td>
-                            <td>{w.requirement}</td>
-                            <td className="text-accent font-medium">{w.budget}</td>
-                            <td>
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-surface border border-border">{w.assignedTo}</span>
-                            </td>
-                            <td className="text-muted">{w.visitDuration}</td>
-                            <td>
-                              <span className={`px-2 py-0.5 rounded-full text-xs border ${sc.cls}`}>{w.status}</span>
-                            </td>
-                            <td className="text-muted">{w.date}</td>
-                            <td className="w-24 text-right">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setWalkinToDraft(w); }}
-                                className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-400"
-                                title="Move to Draft"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
+                  <tr key={w.id} className="cursor-pointer" onClick={() => setSelectedWalkin(w)}>
+                    <td className="text-foreground font-medium">{w.time}</td>
+                    <td className="font-medium text-foreground">{w.name}</td>
+                    <td className="text-muted">{w.phone}</td>
+                    <td>{w.requirement}</td>
+                    <td className="text-accent font-medium">{w.budget}</td>
+                    <td>
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-surface border border-border">{w.assignedTo}</span>
+                    </td>
+                    <td className="text-muted">{w.visitDuration}</td>
+                    <td>
+                      <span className={`px-2 py-0.5 rounded-full text-xs border ${sc.cls}`}>{w.status}</span>
+                    </td>
+                    <td className="text-muted">{w.date}</td>
+                    <td className="w-24 text-right">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setWalkinToDraft(w); }}
+                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-400"
+                        title="Move to Draft"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -399,21 +411,10 @@ export default function WalkinsPage() {
               <input type="email" name="customer-email" autoComplete="email" placeholder="email@example.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent/50" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">Requirement *</label>
+              <label className="block text-xs font-medium text-muted mb-1.5">Looking For *</label>
               <select value={form.requirement} onChange={e => setForm(f => ({ ...f, requirement: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-accent/50">
-                <option value="">What are they looking for?</option>
-                <option>Sofa / Sofa Set</option>
-                <option>Bed</option>
-                <option>Dining Table</option>
-                <option>Wardrobe</option>
-                <option>Office Chair</option>
-                <option>TV Unit</option>
-                <option>Bookshelf / Storage</option>
-                <option>Kids Furniture</option>
-                <option>Modular Kitchen</option>
-                <option>Dressing Table</option>
-                <option>Center Table</option>
-                <option>Other</option>
+                <option value="">Select property type</option>
+                {PROPERTY_CONFIG_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
           </div>
@@ -422,14 +423,31 @@ export default function WalkinsPage() {
               <label className="block text-xs font-medium text-muted mb-1.5">Budget Range</label>
               <select value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-accent/50">
                 <option value="">Select budget range</option>
-                <option>Under ₹10,000</option>
-                <option>₹10,000 - ₹25,000</option>
-                <option>₹25,000 - ₹50,000</option>
-                <option>₹50,000 - ₹1,00,000</option>
-                <option>₹1,00,000 - ₹2,00,000</option>
-                <option>₹2,00,000+</option>
+                {RE_BUDGET_RANGES.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Preferred Location / Project</label>
+              <input type="text" placeholder="e.g., Hinjewadi, Pune" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent/50" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Purpose</label>
+              <select value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-accent/50">
+                <option value="">Not specified</option>
+                {PURPOSE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Possession Timeline</label>
+              <select value={form.possession} onChange={e => setForm(f => ({ ...f, possession: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-accent/50">
+                <option value="">Not specified</option>
+                {POSSESSION_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted mb-1.5">Assign Salesperson</label>
               <select value={form.assignedToId} onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-accent/50">
@@ -442,7 +460,7 @@ export default function WalkinsPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted mb-1.5">Notes</label>
-            <textarea rows={3} placeholder="Any specific preferences, color, size, etc." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent/50 resize-none" />
+            <textarea rows={3} placeholder="Any specific preferences — amenities, floor, vastu, etc." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent/50 resize-none" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowRegisterModal(false)} className="px-4 py-2.5 rounded-xl text-sm text-muted hover:text-foreground hover:bg-surface-hover transition-colors">Cancel</button>
@@ -478,7 +496,7 @@ export default function WalkinsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-surface rounded-xl p-3">
-                  <p className="text-xs text-muted mb-1">Requirement</p>
+                  <p className="text-xs text-muted mb-1">Looking For</p>
                   <p className="text-sm font-medium text-foreground">{selectedWalkin.requirement}</p>
                 </div>
                 <div className="bg-surface rounded-xl p-3">
@@ -514,9 +532,8 @@ export default function WalkinsPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {Object.keys(statusConfig).map(s => (
                     <button key={s} onClick={() => handleStatusUpdate(selectedWalkin.id, s)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                        selectedWalkin.status === s ? `${statusConfig[s].cls}` : 'bg-surface border-border text-muted hover:text-foreground'
-                      }`}>
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${selectedWalkin.status === s ? `${statusConfig[s].cls}` : 'bg-surface border-border text-muted hover:text-foreground'
+                        }`}>
                       {s}
                     </button>
                   ))}
@@ -533,8 +550,8 @@ export default function WalkinsPage() {
                 <button onClick={handleConvertToLead} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-accent/10 text-accent border border-accent/20 rounded-xl text-sm font-medium hover:bg-accent/20 transition-colors">
                   <ArrowRight className="w-4 h-4" /> Convert to Lead
                 </button>
-                <button onClick={() => router.push(`/orders?customer=${encodeURIComponent(selectedWalkin.name)}&phone=${encodeURIComponent(selectedWalkin.phone)}`)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-500/10 text-blue-700 border border-blue-500/20 rounded-xl text-sm font-medium hover:bg-blue-500/20 transition-colors">
-                  <ShoppingBag className="w-4 h-4" /> Create Order
+                <button onClick={() => router.push(`/deals?contact=${encodeURIComponent(selectedWalkin.name)}&phone=${encodeURIComponent(selectedWalkin.phone)}`)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-500/10 text-blue-700 border border-blue-500/20 rounded-xl text-sm font-medium hover:bg-blue-500/20 transition-colors">
+                  <ShoppingBag className="w-4 h-4" /> Create Deal
                 </button>
                 <button onClick={handleMoveToDraft} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500/10 text-red-700 border border-red-500/20 rounded-xl text-sm font-medium hover:bg-red-500/20 transition-colors">
                   <Trash2 className="w-4 h-4" /> Move to Draft
@@ -576,11 +593,10 @@ export default function WalkinsPage() {
                       setLinkCopied(true);
                       setTimeout(() => setLinkCopied(false), 2500);
                     }}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-                      linkCopied
-                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                        : 'bg-accent text-white hover:bg-accent-hover'
-                    }`}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${linkCopied
+                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                      : 'bg-accent text-white hover:bg-accent-hover'
+                      }`}
                   >
                     {linkCopied ? <><CheckCircle2 className="w-3.5 h-3.5" /> Copied!</> : 'Copy Link'}
                   </button>

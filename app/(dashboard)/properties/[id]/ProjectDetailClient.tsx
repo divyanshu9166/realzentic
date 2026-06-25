@@ -18,10 +18,12 @@
 import { useState, useMemo } from 'react';
 import {
     Building2, MapPin, ShieldCheck, SlidersHorizontal,
-    BarChart3, ChevronDown, ChevronUp, Home, X,
+    BarChart3, ChevronDown, ChevronUp, Home, X, Clock,
 } from 'lucide-react';
 import { getInventoryAnalytics } from '@/app/actions/properties';
 import type { InventoryAnalytics } from '@/lib/inventory';
+import AddInventoryButton from './AddInventoryButton';
+import WaitlistPanel from './WaitlistPanel';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -479,7 +481,7 @@ function TowerView({ tower }: { tower: TowerRow }) {
 
 // ─── Root exported component ──────────────────────────────────────────────────
 
-type ViewTab = 'floors' | 'analytics';
+type ViewTab = 'floors' | 'analytics' | 'waitlist';
 
 export default function ProjectDetailClient({ project }: { project: ProjectDetail }) {
     const [activeTower, setActiveTower] = useState<number>(project.towers[0]?.id ?? 0);
@@ -539,12 +541,13 @@ export default function ProjectDetailClient({ project }: { project: ProjectDetai
                 </div>
             </div>
 
-            {/* View toggle: Floors | Analytics */}
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* View toggle: Floors | Analytics | Waitlist */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex bg-surface rounded-xl border border-border p-0.5">
                     {([
                         { id: 'floors' as ViewTab, label: 'Floor Grid', Icon: Building2 },
                         { id: 'analytics' as ViewTab, label: 'Analytics', Icon: BarChart3 },
+                        { id: 'waitlist' as ViewTab, label: 'Waitlist', Icon: Clock },
                     ] as const).map(({ id, label, Icon }) => (
                         <button
                             key={id}
@@ -556,9 +559,15 @@ export default function ProjectDetailClient({ project }: { project: ProjectDetai
                         </button>
                     ))}
                 </div>
+                <AddInventoryButton
+                    projectId={project.id}
+                    towers={project.towers.map((t) => ({ id: t.id, name: t.name }))}
+                />
             </div>
 
             {viewTab === 'analytics' && <ProjectAnalytics projectId={project.id} />}
+
+            {viewTab === 'waitlist' && <WaitlistPanel projectId={project.id} />}
 
             {viewTab === 'floors' && (
                 <>
@@ -577,8 +586,8 @@ export default function ProjectDetailClient({ project }: { project: ProjectDetai
                                         key={t.id}
                                         onClick={() => setActiveTower(t.id)}
                                         className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all border ${activeTower === t.id
-                                                ? 'bg-accent text-white border-accent'
-                                                : 'bg-surface text-muted border-border hover:text-foreground hover:border-accent/30'
+                                            ? 'bg-accent text-white border-accent'
+                                            : 'bg-surface text-muted border-border hover:text-foreground hover:border-accent/30'
                                             }`}
                                     >
                                         <Building2 className="w-3.5 h-3.5" />

@@ -44,6 +44,7 @@ const positiveMoneyArb: fc.Arbitrary<number> = fc
 const nowArb: fc.Arbitrary<Date> = fc.date({
     min: new Date('2010-01-01T00:00:00.000Z'),
     max: new Date('2040-12-31T23:59:59.000Z'),
+    noInvalidDate: true,
 })
 
 /** Return a new Date `days` calendar days after `date` (mirrors the helper). */
@@ -242,6 +243,7 @@ describe('aggregateOverdueCollections (Property 37)', () => {
         const dueDateArb = fc.date({
             min: new Date('2010-01-01T00:00:00.000Z'),
             max: new Date('2040-12-31T23:59:59.000Z'),
+            noInvalidDate: true,
         })
         const derivedMilestoneArb: fc.Arbitrary<MilestoneLike> = positiveMoneyArb.chain((amount) =>
             fc

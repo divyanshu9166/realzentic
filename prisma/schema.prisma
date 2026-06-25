@@ -71,18 +71,22 @@ model VerificationToken {
 // ─── CONTACT (Unified Customer / Client Identity) ─────
 
 model Contact {
-  id              Int      @id @default(autoincrement())
-  name            String
-  phone           String   @unique
-  email           String?
-  address         String?
-  gstNumber       String? // kept for B2B reference
-  state           String?
-  source          String?
-  notes           String?
-  emailSubscribed Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  phone                String   @unique
+  email                String?
+  address              String?
+  gstNumber            String? // kept for B2B reference
+  state                String?
+  source               String?
+  notes                String?
+  emailSubscribed      Boolean  @default(true)
+  // NRI buyer fields
+  nriCountry           String?
+  nriCurrency          String?  @default("USD")
+  preferredContactTime String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   leads         Lead[]
   appointments  Appointment[]
@@ -101,6 +105,11 @@ model Contact {
   supportTickets      SupportTicket[]
   referralsAsReferrer Referral[]     @relation("ReferrerContact")
   referralsAsReferred Referral[]     @relation("ReferredContact")
+  tasks               Task[]
+  loanApplications    LoanApplication[]
+  signatures          DocumentSignature[]
+  waitlists           UnitWaitlist[]
+  snagReports         SnagReport[]
 
   @@index([email])
   @@index([emailSubscribed])
@@ -252,6 +261,10 @@ model Staff {
   agentScores AgentScore[]
   agentBadges AgentBadge[]
   deals       Deal[]
+  tasks       Task[]
+  loanApplications LoanApplication[]
+  agentTargets AgentTarget[]
+  snagReports SnagReport[]
 
   @@index([email])
 }
@@ -1164,6 +1177,10 @@ model WaWhatsappConfig {
   phone_number_id String
   waba_id         String?
   access_token    String
+  // Meta App Secret (encrypted). Used to HMAC-verify inbound webhook
+  // POSTs. Configurable from the WhatsApp Marketing settings UI so the
+  // operator no longer has to set a META_APP_SECRET env var + redeploy.
+  app_secret      String?
   verify_token    String?
   status          String   @default("disconnected")
   connected_at    DateTime?
@@ -1696,6 +1713,7 @@ model Project {
   towers              Tower[]
   paymentPlans        PaymentPlan[]
   constructionUpdates ConstructionUpdate[]
+  waitlist            UnitWaitlist[]
 
   @@index([city])
   @@index([status])
@@ -1756,6 +1774,7 @@ model Unit {
   costSheets   CostSheet[]
   deals        Deal[]
   bookings     Booking[]          @relation("BookingUnit")
+  waitlists    UnitWaitlist[]     @relation("WaitlistUnit")
 
   @@unique([towerId, unitNumber])
   @@index([status])
@@ -1910,6 +1929,7 @@ model Booking {
   milestones  BookingMilestone[]
   schedules   PaymentSchedule[]
   commissions CPCommission[]
+  snagReports SnagReport[]
 
   @@index([unitId])
   @@index([contactId])
@@ -2216,4 +2236,155 @@ model Referral {
 
   @@index([referrerId])
   @@index([referredId])
+}
+
+// ─── TASKS & REMINDERS ───────────────────────────────
+// Agent to-do / activity management: follow-ups, calls, documentation,
+// payment chases, meetings — with due dates, priority, and assignment.
+
+model Task {
+  id           Int       @id @default(autoincrement())
+  title        String
+  description  String?
+  type         String    @default("Follow-up") // Follow-up | Call | Site Visit | Documentation | Payment | Meeting | Other
+  priority     String    @default("Medium")    // Low | Medium | High
+  status       String    @default("Open")      // Open | Done | Cancelled
+  dueDate      DateTime
+  completedAt  DateTime?
+  assignedToId Int?
+  assignedTo   Staff?    @relation(fields: [assignedToId], references: [id])
+  contactId    Int?
+  contact      Contact?  @relation(fields: [contactId], references: [id])
+  dealId       Int? // plain reference to a Deal (no FK) for quick linking
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([contactId])
+}
+
+// ─── HOME-LOAN DESK ──────────────────────────────────
+// Track buyer home-loan applications through the bank pipeline
+// (Enquiry → Documentation → Submitted → Sanctioned → Disbursed / Rejected).
+
+model LoanApplication {
+  id               Int       @id @default(autoincrement())
+  contactId        Int
+  contact          Contact   @relation(fields: [contactId], references: [id])
+  dealId           Int? // plain reference to a Deal (no FK)
+  bankName         String
+  loanAmount       Int? // requested amount in whole rupees
+  interestRate     Float?
+  tenureYears      Int?
+  status           String    @default("Enquiry") // Enquiry | Documentation | Submitted | Sanctioned | Disbursed | Rejected
+  applicationNo    String?
+  sanctionedAmount Int? // sanctioned amount in whole rupees
+  notes            String?
+  assignedToId     Int?
+  assignedTo       Staff?    @relation(fields: [assignedToId], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([contactId])
+  @@index([status])
+  @@index([assignedToId])
+}
+
+// ─── E-SIGNATURE ─────────────────────────────────────
+// Digital signature capture (in-browser canvas/typed) on a generated document.
+
+model DocumentSignature {
+  id             Int       @id @default(autoincrement())
+  documentId     Int?      // FK-free; links to Document.id for context only
+  contactId      Int?
+  contact        Contact?  @relation(fields: [contactId], references: [id])
+  signerName     String
+  signerEmail    String?
+  signerPhone    String?
+  signatureUrl   String    // URL of the stored signature image (PNG)
+  signedDocUrl   String?   // URL of the merged/signed PDF
+  ipAddress      String?
+  signedAt       DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  @@index([contactId])
+  @@index([documentId])
+}
+
+// ─── PRE-LAUNCH / WAITLIST ────────────────────────────
+// Track "expressions of interest" before a project or unit is available for
+// formal booking — priority lists, preferred configurations, and launch-day
+// conversion to bookings.
+
+model UnitWaitlist {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id])
+  contactId   Int
+  contact     Contact   @relation(fields: [contactId], references: [id])
+  unitId      Int?      // preferred unit (nullable — may only know config)
+  unit        Unit?     @relation("WaitlistUnit", fields: [unitId], references: [id])
+  config      String?   // preferred configuration e.g. "3 BHK North-facing"
+  budgetMin   Decimal?  @db.Decimal(12,2)
+  budgetMax   Decimal?  @db.Decimal(12,2)
+  priority    Int       @default(0)   // rank order for launch-day assignment
+  status      String    @default("Waiting") // Waiting | Offered | Converted | Withdrawn
+  notes       String?
+  registeredAt DateTime @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([contactId])
+  @@index([status])
+}
+
+// ─── AGENT TARGETS ────────────────────────────────────
+// Monthly/quarterly sales targets per agent with attainment tracking.
+
+model AgentTarget {
+  id           Int      @id @default(autoincrement())
+  staffId      Int
+  staff        Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  period       String   // "YYYY-MM" or "YYYY-Q1"
+  periodType   String   @default("monthly") // monthly | quarterly
+  unitTarget   Int      @default(0)    // # units to sell
+  revenueTarget Decimal @default(0) @db.Decimal(14,2)
+  unitAchieved Int      @default(0)
+  revenueAchieved Decimal @default(0) @db.Decimal(14,2)
+  incentiveStructure Json? // [{threshold, bonus}]
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([staffId, period])
+  @@index([staffId])
+  @@index([period])
+}
+
+// ─── SNAG / DEFECT MANAGEMENT ─────────────────────────
+// Post-possession snag list: buyers report defects; builder tracks resolution.
+
+model SnagReport {
+  id           Int       @id @default(autoincrement())
+  bookingId    Int
+  booking      Booking   @relation(fields: [bookingId], references: [id])
+  contactId    Int?
+  contact      Contact?  @relation(fields: [contactId], references: [id])
+  title        String
+  description  String?
+  category     String    @default("General") // Civil | Electrical | Plumbing | Painting | Flooring | General
+  severity     String    @default("Medium")  // Low | Medium | High | Critical
+  status       String    @default("Open")    // Open | In Progress | Resolved | Closed
+  photoUrls    String[]
+  assignedToId Int?
+  assignedTo   Staff?    @relation(fields: [assignedToId], references: [id])
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([contactId])
 }

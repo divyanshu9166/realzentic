@@ -278,7 +278,13 @@ async function triggerAutoNurture(dealId: number, score: number): Promise<void> 
  *
  * Requirements: 17.3, 17.4, 17.5, 17.6
  */
-export async function scoreAndPersistDeal(dealId: number, now: Date = new Date()) {
+export async function scoreAndPersistDeal(
+    dealId: number,
+    now: Date = new Date(),
+): Promise<
+    | { success: true; data: Awaited<ReturnType<typeof scoreOneDeal>> }
+    | { success: false; error: string }
+> {
     if (!Number.isInteger(dealId) || dealId <= 0) {
         return { success: false, error: 'A valid deal id is required' }
     }

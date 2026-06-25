@@ -311,7 +311,14 @@ export async function getDealDetail(dealId: number) {
             assignedAgent: true,
             channelPartner: true,
             activities: { orderBy: { createdAt: 'desc' } },
-            booking: { include: { milestones: { orderBy: { dueDate: 'asc' } } } },
+            booking: {
+                include: {
+                    milestones: {
+                        orderBy: { dueDate: 'asc' },
+                        include: { demandLetters: { orderBy: { generatedAt: 'desc' } } },
+                    },
+                },
+            },
         },
     })
 
@@ -983,7 +990,21 @@ export async function generateDemandLetters(windowDays: number, now: Date = new 
  *
  * Requirements: 9.2, 9.3
  */
-export async function sendDemandLetter(letterId: number, transports?: DemandTransports) {
+export async function sendDemandLetter(
+    letterId: number,
+    transports?: DemandTransports,
+): Promise<
+    | {
+        success: true
+        data: {
+            letterId: number
+            whatsappStatus: string
+            emailStatus: string
+            sentDate: Date | null
+        }
+    }
+    | { success: false; error: string }
+> {
     if (!Number.isInteger(letterId) || letterId < 1) {
         return { success: false, error: 'A valid demand letter must be selected' }
     }
@@ -1220,4 +1241,29 @@ export async function getOverdueCollections(now: Date = new Date()) {
     )
 
     return { success: true, data }
+}
+
+
+// ─── Default pipeline seeding ─────────────────────────
+/**
+ * Create a standard real-estate deal pipeline if none exists yet. Idempotent:
+ * a no-op when any stage is already configured, so the "Set up default
+ * pipeline" button can be shown safely whenever the board is empty.
+ */
+export async function seedDefaultDealStages() {
+    const count = await prisma.dealStage.count()
+    if (count > 0) return { success: true as const, data: { created: 0 } }
+
+    const defaults = [
+        { name: 'New Inquiry', order: 1, color: '#3b82f6', isWon: false, isLost: false },
+        { name: 'Site Visit Scheduled', order: 2, color: '#8b5cf6', isWon: false, isLost: false },
+        { name: 'Site Visit Done', order: 3, color: '#06b6d4', isWon: false, isLost: false },
+        { name: 'Negotiation', order: 4, color: '#f59e0b', isWon: false, isLost: false },
+        { name: 'Booked / Won', order: 5, color: '#10b981', isWon: true, isLost: false },
+        { name: 'Lost', order: 6, color: '#ef4444', isWon: false, isLost: true },
+    ]
+
+    await prisma.dealStage.createMany({ data: defaults })
+    revalidatePath(DEALS_PATH)
+    return { success: true as const, data: { created: defaults.length } }
 }

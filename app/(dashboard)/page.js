@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import TopPerformersWidget from '@/components/TopPerformersWidget';
+import OverdueCollectionsWidget from '@/components/OverdueCollectionsWidget';
+import CrmAnalyticsSection from '@/components/CrmAnalyticsSection';
 import { getDashboardStats } from '@/app/actions/dashboard';
 import { getExpenseSummary } from '@/app/actions/expenses';
 
@@ -419,6 +421,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Overdue Collections (Req 9.6) */}
+      <OverdueCollectionsWidget />
+
+      {/* Performance Analytics (merged from the former Reports section) */}
+      <CrmAnalyticsSection />
 
       {/* Top Performers */}
       <TopPerformersWidget metric="deals" />

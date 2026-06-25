@@ -72,3 +72,83 @@ export async function listContactsBrief() {
     return { success: false, error: 'Failed to load contacts', data: [] as { id: number; name: string; phone: string | null }[] }
   }
 }
+
+
+// ─── CONTACTS DIRECTORY ──────────────────────────────────
+// The central customer database view: every Contact with quick-glance
+// counts (leads / deals / bookings) and source, for the /contacts section.
+
+export interface ContactDirectoryRow {
+  id: number
+  name: string
+  phone: string
+  email: string | null
+  source: string | null
+  state: string | null
+  nriCountry: string | null
+  createdAt: string
+  leadCount: number
+  dealCount: number
+  bookingCount: number
+}
+
+/**
+ * List contacts for the Contacts directory, newest first, with linked-record
+ * counts. Supports a free-text search across name / phone / email. Capped at
+ * 1000 rows for the list view (detail pages load the full record on demand).
+ */
+export async function getContactsDirectory(params?: { search?: string }): Promise<{
+  success: boolean
+  data: ContactDirectoryRow[]
+  error?: string
+}> {
+  try {
+    const search = params?.search?.trim()
+    const where = search
+      ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { phone: { contains: search } },
+          { email: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }
+      : {}
+
+    const contacts = await prisma.contact.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        source: true,
+        state: true,
+        nriCountry: true,
+        createdAt: true,
+        _count: { select: { leads: true, deals: true, bookings: true } },
+      },
+    })
+
+    return {
+      success: true,
+      data: contacts.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        source: c.source,
+        state: c.state,
+        nriCountry: c.nriCountry,
+        createdAt: c.createdAt.toISOString(),
+        leadCount: c._count.leads,
+        dealCount: c._count.deals,
+        bookingCount: c._count.bookings,
+      })),
+    }
+  } catch (error) {
+    console.error('Error loading contacts directory:', error)
+    return { success: false, data: [], error: 'Failed to load contacts' }
+  }
+}

@@ -338,13 +338,17 @@ export default function AppointmentsPage() {
           <div>
             <label className="block text-xs font-medium text-muted mb-1.5">Purpose</label>
             <select name="purpose" className="w-full">
-              <option>Sofa Collection Viewing</option>
-              <option>Bed Selection</option>
-              <option>Dining Table Measurement</option>
-              <option>Kitchen Design Consultation</option>
-              <option>Wardrobe Design Discussion</option>
-              <option>General Showroom Visit</option>
-              <option>Order Pickup</option>
+              <option>Site Visit</option>
+              <option>Project Walkthrough</option>
+              <option>Sample Flat Visit</option>
+              <option>Sales Office Meeting</option>
+              <option>Cost Sheet Discussion</option>
+              <option>Negotiation Meeting</option>
+              <option>Booking / Token</option>
+              <option>Agreement Signing</option>
+              <option>Home Loan Assistance</option>
+              <option>Possession / Handover</option>
+              <option>Other</option>
             </select>
           </div>
           <div>

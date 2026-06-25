@@ -10,7 +10,7 @@ import type { Prisma, UserRole } from '@prisma/client'
 // ─── IST helpers ─────────────────────────────────────────────────────────────
 // All attendance dates/times must be in IST (Asia/Kolkata, UTC+5:30)
 // regardless of the server's system timezone.
-function getISTDate(): { today: Date; time: string } { 
+function getISTDate(): { today: Date; time: string } {
   const now = new Date()
   // Current IST offset in ms (+5:30 = 19800 s)
   const istOffsetMs = 5.5 * 60 * 60 * 1000
@@ -120,7 +120,6 @@ export async function getStaffMember(id: number) {
       attendance: { orderBy: { date: 'desc' } },
       activities: { orderBy: { date: 'desc' } },
       fieldVisits: { orderBy: { date: 'desc' } },
-      stockUpdates: { orderBy: { date: 'desc' } },
     },
   })
   if (!staff) return { success: false, error: 'Staff not found' }
@@ -379,7 +378,7 @@ export async function clockIn(staffId: number, gps?: { lat: number; lng: number 
   const shiftStart = settings?.shiftStartTime || '09:30'
   const [shiftH, shiftM] = shiftStart.split(':').map(Number)
   const [nowH, nowM] = time.split(':').map(Number)
-  
+
   const graceMinutes = 15
   const isLate = (nowH * 60 + nowM) > (shiftH * 60 + shiftM + graceMinutes)
 
@@ -410,7 +409,7 @@ export async function clockOut(staffId: number, gps?: { lat: number; lng: number
   if (!existing || !existing.clockIn) {
     return { success: false, error: 'Must clock in first' }
   }
-  
+
   if (existing.clockOut) {
     return { success: false, error: 'Already clocked out for today' }
   }
@@ -430,17 +429,17 @@ export async function clockOut(staffId: number, gps?: { lat: number; lng: number
   let totalMins = (outH * 60 + outM) - (inH * 60 + inM)
   if (totalMins < 0) totalMins += 24 * 60 // midnight crossover
   const hours = Math.round(totalMins / 60 * 100) / 100
-  
+
   // Standard ERP feature: Check for Half Day based on shift duration
   const shiftStart = settings?.shiftStartTime || '09:30'
   const shiftEnd = settings?.shiftEndTime || '20:00'
   const [startH, startM] = shiftStart.split(':').map(Number)
   const [endH, endM] = shiftEnd.split(':').map(Number)
-  
+
   let shiftTotalMins = (endH * 60 + endM) - (startH * 60 + startM)
   if (shiftTotalMins <= 0) shiftTotalMins = 9 * 60 // fallback to 9 hours if configured incorrectly
   const halfDayThresholdHours = (shiftTotalMins / 2) / 60
-  
+
   let newStatus = existing.status
   // If they worked less than half the shift, automatically mark as Half Day
   if (hours > 0 && hours < halfDayThresholdHours) {

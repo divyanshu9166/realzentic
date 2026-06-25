@@ -1,22 +1,30 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, MessageSquare, Instagram, Facebook, Globe, Phone, Mail, ChevronRight, Bot, Clock, Trash2, Store, Building2, AlertCircle } from 'lucide-react';
+import { Search, Plus, MessageSquare, Instagram, Facebook, Globe, Phone, Mail, ChevronRight, Bot, Clock, Trash2, Store, Building2, AlertCircle, Users } from 'lucide-react';
 import { getLeads, createLead, updateLeadStatus, addFollowUp, findDuplicates, mergeContacts, dedupReport } from '@/app/actions/leads';
 import { moveLeadToDraft } from '@/app/actions/drafts';
 import Modal from '@/components/Modal';
 import AiMatchPanel from '@/components/AiMatchPanel';
 import DuplicateWarningModal from '@/components/leads/DuplicateWarningModal';
 import { useAlertToast } from '@/components/AlertToastProvider';
+import { LEAD_SOURCE_OPTIONS } from '@/lib/lead-sources';
+import {
+  PROPERTY_CONFIG_OPTIONS,
+  RE_BUDGET_RANGES,
+  PURPOSE_OPTIONS,
+  POSSESSION_OPTIONS,
+  composePreferenceNotes,
+} from '@/lib/real-estate-options';
 
-const pipelineStages = ['New', 'Contacted', 'Showroom Visit', 'Quotation', 'Won', 'Lost'];
+const pipelineStages = ['New', 'Contacted', 'Site Visit', 'Quotation', 'Won', 'Lost'];
 
 const stageToEnum = {
-  'New': 'NEW', 'Contacted': 'CONTACTED', 'Showroom Visit': 'SHOWROOM_VISIT',
+  'New': 'NEW', 'Contacted': 'CONTACTED', 'Site Visit': 'SHOWROOM_VISIT',
   'Quotation': 'QUOTATION', 'Won': 'WON', 'Lost': 'LOST',
 };
 
-const sourceIconMap = { WhatsApp: MessageSquare, 'WhatsApp Inquiry': MessageSquare, Instagram, Facebook, Website: Globe, 'Showroom Visit': Store, IndiaMART: Building2 };
+const sourceIconMap = { WhatsApp: MessageSquare, 'WhatsApp Inquiry': MessageSquare, Instagram, Facebook, Website: Globe, 'Showroom Visit': Store, 'Site Visit': Store, 'Walk-in': Store, Referral: Users, 'Channel Partner': Building2, IndiaMART: Building2, '99acres': Building2, MagicBricks: Building2, Housing: Building2, NoBroker: Building2 };
 
 const sourceColorMap = {
   WhatsApp: 'text-success bg-success-light',
@@ -25,6 +33,10 @@ const sourceColorMap = {
   Facebook: 'text-info bg-info-light',
   Website: 'text-teal bg-teal-light',
   'Showroom Visit': 'text-amber-700 bg-amber-500/10',
+  'Site Visit': 'text-amber-700 bg-amber-500/10',
+  'Walk-in': 'text-amber-700 bg-amber-500/10',
+  Referral: 'text-purple bg-purple-light',
+  'Channel Partner': 'text-blue-700 bg-blue-500/10',
   IndiaMART: 'text-blue-700 bg-blue-500/10',
 };
 
@@ -33,7 +45,7 @@ const defaultSourceColor = 'text-muted bg-surface-hover';
 const statusColorMap = {
   New: 'bg-info-light text-info border-info/20',
   Contacted: 'bg-accent-light text-accent border-accent/20',
-  'Showroom Visit': 'bg-purple-light text-purple border-purple/20',
+  'Site Visit': 'bg-purple-light text-purple border-purple/20',
   Quotation: 'bg-teal-light text-teal border-teal/20',
   Won: 'bg-success-light text-success border-success/20',
   Lost: 'bg-danger-light text-danger border-danger/20',
@@ -116,7 +128,13 @@ export default function LeadsPage() {
     const leadData = {
       name: f.fullName.value, phone: f.phone.value, email: f.email.value,
       source: f.source.value, budget: f.budget.value,
-      interest: f.interest.value, notes: f.notes.value,
+      interest: f.interest.value,
+      notes: composePreferenceNotes({
+        notes: f.notes.value,
+        purpose: f.purpose?.value || undefined,
+        possession: f.possession?.value || undefined,
+        location: f.location?.value || undefined,
+      }),
     };
 
     // Req 11.1 / 11.2: check for duplicates before saving.
@@ -303,7 +321,7 @@ export default function LeadsPage() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input type="text" placeholder="Search leads by name or product interest..." value={search} onChange={e => setSearch(e.target.value)}
+        <input type="text" placeholder="Search leads by name or property interest..." value={search} onChange={e => setSearch(e.target.value)}
           className="w-full md:max-w-md pl-10 pr-4 py-2.5 bg-surface rounded-xl border border-border text-sm" />
       </div>
 
@@ -360,7 +378,7 @@ export default function LeadsPage() {
                             </div>
                           )}
                         </div>
-                        <p className="text-xs text-muted mb-2">🛋️ {lead.interest}</p>
+                        <p className="text-xs text-muted mb-2">🏠 {lead.interest}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-medium text-accent">{lead.budget}</span>
                           <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -420,7 +438,7 @@ export default function LeadsPage() {
                       </div>
                       <span className={`badge flex-shrink-0 ${statusColorMap[lead.status]}`}>{lead.status}</span>
                     </div>
-                    <p className="text-xs text-muted truncate mt-0.5">🛋️ {lead.interest}</p>
+                    <p className="text-xs text-muted truncate mt-0.5">🏠 {lead.interest}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md ${sourceColor}`}>
                         {SourceIcon && <SourceIcon className="w-3 h-3" />}
@@ -559,7 +577,7 @@ export default function LeadsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-xl bg-surface">
                 <p className="text-xs text-muted mb-1">Interest</p>
-                <p className="text-sm font-medium text-foreground">🛋️ {selectedLead.interest}</p>
+                <p className="text-sm font-medium text-foreground">🏠 {selectedLead.interest}</p>
               </div>
               <div className="p-3 rounded-xl bg-surface">
                 <p className="text-xs text-muted mb-1">Budget</p>
@@ -687,17 +705,45 @@ export default function LeadsPage() {
             <div>
               <label className="block text-xs font-medium text-muted mb-1.5">Source</label>
               <select name="source" className="w-full">
-                <option>WhatsApp</option><option>WhatsApp Inquiry</option><option>Instagram</option><option>Facebook</option><option>Website</option><option>Showroom Visit</option><option>IndiaMART</option>
+                {LEAD_SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-muted mb-1.5">Budget</label>
-              <input type="text" name="budget" placeholder="₹00,000" className="w-full" />
+              <select name="budget" className="w-full">
+                <option value="">Select budget range</option>
+                {RE_BUDGET_RANGES.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted mb-1.5">Product Interest</label>
-            <input type="text" name="interest" required placeholder="e.g., L-Shaped Sofa" className="w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Property Configuration</label>
+              <select name="interest" required className="w-full" defaultValue="">
+                <option value="" disabled>Select configuration</option>
+                {PROPERTY_CONFIG_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Preferred Location / Project</label>
+              <input type="text" name="location" placeholder="e.g., Wakad, Pune" className="w-full" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Purpose</label>
+              <select name="purpose" className="w-full" defaultValue="">
+                <option value="">Not specified</option>
+                {PURPOSE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Possession Timeline</label>
+              <select name="possession" className="w-full" defaultValue="">
+                <option value="">Not specified</option>
+                {POSSESSION_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-muted mb-1.5">Notes</label>

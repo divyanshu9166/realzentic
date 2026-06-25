@@ -8,7 +8,7 @@ import { useAlertToast } from '@/components/AlertToastProvider'
 const leadStatusOptions = [
   { value: 'NEW', label: 'New' },
   { value: 'CONTACTED', label: 'Contacted' },
-  { value: 'SHOWROOM_VISIT', label: 'Showroom Visit' },
+  { value: 'SHOWROOM_VISIT', label: 'Site Visit' },
   { value: 'QUOTATION', label: 'Quotation' },
   { value: 'WON', label: 'Won' },
   { value: 'LOST', label: 'Lost' },

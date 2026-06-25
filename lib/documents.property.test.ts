@@ -198,6 +198,7 @@ describe('Property 35: Document expiry alert window', () => {
                 fc.date({
                     min: new Date('2000-01-01T00:00:00Z'),
                     max: new Date('2100-01-01T00:00:00Z'),
+                    noInvalidDate: true,
                 }),
                 // Window in the configurable range.
                 fc.integer({ min: 1, max: 365 }),

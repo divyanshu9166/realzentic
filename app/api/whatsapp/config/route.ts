@@ -51,6 +51,7 @@ export async function GET() {
       created_at: config.created_at.toISOString(),
       updated_at: config.updated_at.toISOString(),
       has_access_token: Boolean(config.access_token),
+      has_app_secret: Boolean(config.app_secret),
     }
 
     // Try to decrypt the stored token with the current ENCRYPTION_KEY.
@@ -121,6 +122,7 @@ export async function POST(request: Request) {
       phone_number_id?: string
       waba_id?: string
       access_token?: string
+      app_secret?: string
       verify_token?: string
     }
     try {
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
-    const { phone_number_id, waba_id, access_token, verify_token } = body
+    const { phone_number_id, waba_id, access_token, app_secret, verify_token } = body
 
     if (!access_token || !phone_number_id) {
       return NextResponse.json(
@@ -141,14 +143,20 @@ export async function POST(request: Request) {
     // is missing we store the token as plaintext so the save never fails silently)
     let encryptedAccessToken: string
     let encryptedVerifyToken: string | null
+    // app_secret is optional in the payload: only present when the operator
+    // typed a new value (the UI sends the masked sentinel otherwise). When
+    // omitted we leave the stored secret untouched on update.
+    let encryptedAppSecret: string | null | undefined
     try {
       encryptedAccessToken = encrypt(access_token)
       encryptedVerifyToken = verify_token ? encrypt(verify_token) : null
+      encryptedAppSecret = app_secret ? encrypt(app_secret) : undefined
     } catch (err) {
       console.warn('Encryption unavailable, storing token as-is:', err instanceof Error ? err.message : err)
       // Store as plaintext — better than blocking the user entirely
       encryptedAccessToken = access_token
       encryptedVerifyToken = verify_token || null
+      encryptedAppSecret = app_secret || undefined
     }
 
     // Save to database first — always succeeds regardless of Meta status
@@ -160,6 +168,7 @@ export async function POST(request: Request) {
         waba_id: waba_id || null,
         access_token: encryptedAccessToken,
         verify_token: encryptedVerifyToken,
+        app_secret: encryptedAppSecret ?? null,
         status: 'connected',
         connected_at: new Date(),
       },
@@ -168,6 +177,8 @@ export async function POST(request: Request) {
         waba_id: waba_id || null,
         access_token: encryptedAccessToken,
         verify_token: encryptedVerifyToken,
+        // Only overwrite the stored app secret when a new one was provided.
+        ...(encryptedAppSecret !== undefined ? { app_secret: encryptedAppSecret } : {}),
         status: 'connected',
         connected_at: new Date(),
       },

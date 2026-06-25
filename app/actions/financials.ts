@@ -9,13 +9,13 @@ import { createJournalSchema, createAccountSchema } from '@/lib/validations/fina
 
 const DEFAULT_ACCOUNTS = [
   // Assets
-  { groupName: 'Current Assets',      type: 'ASSET',     code: '1001', name: 'Cash in Hand' },
-  { groupName: 'Current Assets',      type: 'ASSET',     code: '1002', name: 'Bank Account' },
-  { groupName: 'Current Assets',      type: 'ASSET',     code: '1100', name: 'Token / Advance Receivable' },
-  { groupName: 'Current Assets',      type: 'ASSET',     code: '1200', name: 'Brokerage Receivable' },
-  { groupName: 'Current Assets',      type: 'ASSET',     code: '1300', name: 'Security Deposit (Paid)' },
-  { groupName: 'Fixed Assets',        type: 'ASSET',     code: '1500', name: 'Office Equipment' },
-  { groupName: 'Fixed Assets',        type: 'ASSET',     code: '1510', name: 'Vehicles' },
+  { groupName: 'Current Assets', type: 'ASSET', code: '1001', name: 'Cash in Hand' },
+  { groupName: 'Current Assets', type: 'ASSET', code: '1002', name: 'Bank Account' },
+  { groupName: 'Current Assets', type: 'ASSET', code: '1100', name: 'Token / Advance Receivable' },
+  { groupName: 'Current Assets', type: 'ASSET', code: '1200', name: 'Brokerage Receivable' },
+  { groupName: 'Current Assets', type: 'ASSET', code: '1300', name: 'Security Deposit (Paid)' },
+  { groupName: 'Fixed Assets', type: 'ASSET', code: '1500', name: 'Office Equipment' },
+  { groupName: 'Fixed Assets', type: 'ASSET', code: '1510', name: 'Vehicles' },
   // Liabilities
   { groupName: 'Current Liabilities', type: 'LIABILITY', code: '2001', name: 'Advance from Clients' },
   { groupName: 'Current Liabilities', type: 'LIABILITY', code: '2100', name: 'Security Deposit (Received)' },
@@ -24,25 +24,25 @@ const DEFAULT_ACCOUNTS = [
   { groupName: 'Current Liabilities', type: 'LIABILITY', code: '2400', name: 'TDS Payable' },
   { groupName: 'Long Term Liabilities', type: 'LIABILITY', code: '2900', name: 'Bank Loan' },
   // Equity
-  { groupName: 'Equity',              type: 'EQUITY',    code: '3001', name: "Owner's Capital" },
-  { groupName: 'Equity',              type: 'EQUITY',    code: '3100', name: 'Retained Earnings' },
-  { groupName: 'Equity',              type: 'EQUITY',    code: '3200', name: 'Drawings' },
+  { groupName: 'Equity', type: 'EQUITY', code: '3001', name: "Owner's Capital" },
+  { groupName: 'Equity', type: 'EQUITY', code: '3100', name: 'Retained Earnings' },
+  { groupName: 'Equity', type: 'EQUITY', code: '3200', name: 'Drawings' },
   // Income
-  { groupName: 'Revenue',             type: 'INCOME',    code: '4001', name: 'Brokerage Income' },
-  { groupName: 'Revenue',             type: 'INCOME',    code: '4002', name: 'Rental Commission' },
-  { groupName: 'Revenue',             type: 'INCOME',    code: '4100', name: 'Consultation Fees' },
-  { groupName: 'Revenue',             type: 'INCOME',    code: '4200', name: 'Other Income' },
+  { groupName: 'Revenue', type: 'INCOME', code: '4001', name: 'Brokerage Income' },
+  { groupName: 'Revenue', type: 'INCOME', code: '4002', name: 'Rental Commission' },
+  { groupName: 'Revenue', type: 'INCOME', code: '4100', name: 'Consultation Fees' },
+  { groupName: 'Revenue', type: 'INCOME', code: '4200', name: 'Other Income' },
   // Expenses
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5100', name: 'Salary Expense' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5110', name: 'Employer PF Contribution' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5120', name: 'Employer ESI Contribution' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5200', name: 'Rent Expense' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5300', name: 'Electricity & Utilities' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5400', name: 'Marketing & Advertising' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5500', name: 'Site Visit Expenses' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5600', name: 'Bank Charges' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5700', name: 'Depreciation' },
-  { groupName: 'Operating Expenses',  type: 'EXPENSE',   code: '5800', name: 'Other Expenses' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5100', name: 'Salary Expense' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5110', name: 'Employer PF Contribution' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5120', name: 'Employer ESI Contribution' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5200', name: 'Rent Expense' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5300', name: 'Electricity & Utilities' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5400', name: 'Marketing & Advertising' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5500', name: 'Site Visit Expenses' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5600', name: 'Bank Charges' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5700', name: 'Depreciation' },
+  { groupName: 'Operating Expenses', type: 'EXPENSE', code: '5800', name: 'Other Expenses' },
 ]
 
 function parseAsOfDate(asOfDate: string) {
@@ -171,7 +171,7 @@ export async function getProfitAndLoss(fromDate: string, toDate: string, compare
 
   const current = await fetchPL(fromDate, toDate)
   if (!current) return { success: false, error: 'Invalid date range' }
-  let compare = null
+  let compare: Awaited<ReturnType<typeof fetchPL>> = null
   if (compareFrom && compareTo) {
     compare = await fetchPL(compareFrom, compareTo)
     if (!compare) return { success: false, error: 'Invalid comparison date range' }
@@ -392,15 +392,15 @@ export async function getTrialBalance(asOfDate: string) {
 
   const [inflow, outflow, payrollPaid, payrollApproved, staffLoans, loanRecoveries,
     payrollTotal, employerTotal] = await Promise.all([
-    prisma.dailyPayment.aggregate({ where: { type: 'IN', isReversal: false, date: { lte: asOf } }, _sum: { amount: true } }),
-    prisma.dailyPayment.aggregate({ where: { type: 'OUT', isReversal: false, date: { lte: asOf } }, _sum: { amount: true } }),
-    prisma.payrollRun.aggregate({ where: { status: 'PAID', paidAt: { lte: asOf } }, _sum: { totalNet: true } }),
-    prisma.payrollRun.aggregate({ where: { status: 'APPROVED' }, _sum: { totalNet: true } }),
-    prisma.staffLoan.aggregate({ where: { status: 'Active' }, _sum: { remainingAmount: true } }),
-    prisma.payslip.aggregate({ where: { payrollRun: { status: 'PAID', paidAt: { lte: asOf } } }, _sum: { loanDeduction: true } }),
-    prisma.payrollRun.aggregate({ where: { status: { in: ['APPROVED', 'PAID'] } }, _sum: { totalGross: true } }),
-    prisma.payrollRun.aggregate({ where: { status: { in: ['APPROVED', 'PAID'] } }, _sum: { employerContributions: true } }),
-  ])
+      prisma.dailyPayment.aggregate({ where: { type: 'IN', isReversal: false, date: { lte: asOf } }, _sum: { amount: true } }),
+      prisma.dailyPayment.aggregate({ where: { type: 'OUT', isReversal: false, date: { lte: asOf } }, _sum: { amount: true } }),
+      prisma.payrollRun.aggregate({ where: { status: 'PAID', paidAt: { lte: asOf } }, _sum: { totalNet: true } }),
+      prisma.payrollRun.aggregate({ where: { status: 'APPROVED' }, _sum: { totalNet: true } }),
+      prisma.staffLoan.aggregate({ where: { status: 'Active' }, _sum: { remainingAmount: true } }),
+      prisma.payslip.aggregate({ where: { payrollRun: { status: 'PAID', paidAt: { lte: asOf } } }, _sum: { loanDeduction: true } }),
+      prisma.payrollRun.aggregate({ where: { status: { in: ['APPROVED', 'PAID'] } }, _sum: { totalGross: true } }),
+      prisma.payrollRun.aggregate({ where: { status: { in: ['APPROVED', 'PAID'] } }, _sum: { employerContributions: true } }),
+    ])
 
   const totalInflow = inflow._sum.amount || 0
   const totalOutflow = outflow._sum.amount || 0

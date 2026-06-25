@@ -2,17 +2,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PROPERTY_CONFIG_OPTIONS, RE_BUDGET_RANGES } from '@/lib/real-estate-options';
 
-const REQUIREMENT_OPTIONS = [
-  'Sofa / Sofa Set', 'Bed & Mattress', 'Dining Table', 'Wardrobe',
-  'Office Furniture', 'TV Unit', 'Bookshelf / Storage', 'Kids Furniture',
-  'Modular Kitchen', 'Dressing Table', 'Center Table', 'Home Decor', 'Other',
-];
+const REQUIREMENT_OPTIONS = PROPERTY_CONFIG_OPTIONS;
 
-const BUDGET_RANGES = [
-  'Under ₹10,000', '₹10,000 – ₹25,000', '₹25,000 – ₹50,000',
-  '₹50,000 – ₹1,00,000', '₹1,00,000 – ₹2,00,000', '₹2,00,000+',
-];
+const BUDGET_RANGES = RE_BUDGET_RANGES;
 
 export default function WalkinFormPage() {
   const [storeName, setStoreName] = useState('');
@@ -26,10 +20,10 @@ export default function WalkinFormPage() {
     fetch('/api/walkin')
       .then(r => r.json())
       .then(data => {
-        setStoreName(data.storeName || 'Furniture Store');
+        setStoreName(data.storeName || 'Realzentic');
         setLogo(data.logo);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleSubmit = async (e) => {
@@ -85,7 +79,7 @@ export default function WalkinFormPage() {
               <p style={S.infoValue}>{form.budget}</p>
             </>}
           </div>
-          <p style={S.successHint}>Feel free to explore our showroom while we connect you with the right person.</p>
+          <p style={S.successHint}>Feel free to explore our projects while we connect you with the right person.</p>
           <button onClick={() => { setSubmitted(false); setForm({ name: '', phone: '', requirement: '', budget: '' }); }} style={S.againBtn}>
             Register another visitor
           </button>
@@ -103,7 +97,7 @@ export default function WalkinFormPage() {
           {logo ? (
             <div style={S.logoWrap}><img src={logo} alt={storeName} style={S.logoImg} /></div>
           ) : (
-            <div style={S.logoDef}><span style={{ fontSize: 28 }}>🪑</span></div>
+            <div style={S.logoDef}><span style={{ fontSize: 28 }}>🏠</span></div>
           )}
           <h1 style={S.storeName}>{storeName}</h1>
           <p style={S.tagline}>Welcome! Please register your visit</p>

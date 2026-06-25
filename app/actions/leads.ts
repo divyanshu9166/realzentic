@@ -16,6 +16,7 @@ import {
 const statusMap: Record<string, LeadStatus> = {
   'New': 'NEW',
   'Contacted': 'CONTACTED',
+  'Site Visit': 'SHOWROOM_VISIT',
   'Showroom Visit': 'SHOWROOM_VISIT',
   'Quotation': 'QUOTATION',
   'Won': 'WON',
@@ -25,7 +26,7 @@ const statusMap: Record<string, LeadStatus> = {
 const statusDisplayMap: Record<LeadStatus, string> = {
   NEW: 'New',
   CONTACTED: 'Contacted',
-  SHOWROOM_VISIT: 'Showroom Visit',
+  SHOWROOM_VISIT: 'Site Visit',
   QUOTATION: 'Quotation',
   WON: 'Won',
   LOST: 'Lost',

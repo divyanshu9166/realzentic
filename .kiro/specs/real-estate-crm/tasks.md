@@ -110,7 +110,7 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
   - [ ]* 5.3 Integration test: cost-sheet PDF generation success and failure
     - Real `jspdf` path; on failure the existing PDF URL is preserved and an error returned
     - _Requirements: 3.9_
-  - [ ] 5.4 Build cost-sheet UI in properties module
+  - [x] 5.4 Build cost-sheet UI in properties module
     - Cost-sheet builder form with itemized breakdown, PDF preview, share actions, payment-plan editor
     - _Requirements: 3.1, 3.10, 3.11_
   - [ ]* 5.5 Unit tests for cost-sheet persistence and payment-plan default constraint
@@ -163,7 +163,7 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
     - Mocked failing `moveDeal` returns card to original column with error
     - _Requirements: 4.6_
 
-- [ ] 8. Checkpoint - Ensure all tests pass
+- [x] 8. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 9. Module 4 — Channel Partner pure helpers
@@ -209,7 +209,7 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
     - **Property 32: Channel partner lead submission validation**
     - **Validates: Requirements 7.6**
 
-- [ ] 11. Phase 1 checkpoint - Ensure all tests pass
+- [x] 11. Phase 1 checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 12. Module 5 — Document Management & KYC
@@ -248,10 +248,10 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
   - [x] 13.4 Implement demand-letter and milestone-payment actions in `app/actions/deals.ts`
     - `generateDemandLetters` (dedup), `sendDemandLetter` (WhatsApp+Email, retry ≤3, notify manager on failure), `sweepOverdueMilestones`, `recordMilestonePayment` (partial/paid; reject invalid), `getOverdueCollections`
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.7, 9.8, 20.7_
-  - [ ] 13.5 Wire BullMQ jobs and cron routes for demand letters and overdue sweep
+  - [x] 13.5 Wire BullMQ jobs and cron routes for demand letters and overdue sweep
     - `app/api/cron/demand-letters` and `app/api/cron/overdue-sweep` trigger the respective actions
     - _Requirements: 9.1, 9.4_
-  - [ ] 13.6 Build milestone timeline UI and Overdue Collections dashboard widget
+  - [x] 13.6 Build milestone timeline UI and Overdue Collections dashboard widget
     - Per-milestone Send Demand / Mark Paid actions, demand-letter history, dashboard widget (count + sum unpaid)
     - _Requirements: 9.5, 9.6_
   - [ ]* 13.7 Integration test: demand-letter dispatch with mocked transports
@@ -304,7 +304,7 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
     - Warning modal listing matches with confidence + Merge/Create New actions, duplicate badge on leads
     - _Requirements: 11.2, 11.5_
 
-- [ ] 16. Phase 2 checkpoint - Ensure all tests pass
+- [x] 16. Phase 2 checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 17. Module 9 — Site Visit 2.0
@@ -387,7 +387,7 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
     - Valid webhook creates Contact+Lead, auto-assigns, and notifies assignee
     - _Requirements: 15.3_
 
-- [ ] 21. Phase 3 checkpoint - Ensure all tests pass
+- [x] 21. Phase 3 checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 22. Module 13 — AI Property Matching
@@ -439,7 +439,7 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
     - Notifications/auto-nurture fire within the specified window
     - _Requirements: 17.5_
 
-- [ ] 24. Phase 4 checkpoint - Ensure all tests pass
+- [x] 24. Phase 4 checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 25. Module 15 — Buyer Self-Service Portal
@@ -484,7 +484,7 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
   - [x] 26.4 Implement referral actions in `app/actions/referrals.ts`
     - ReferralProgram/Referral persistence, `createReferral` (reject self-referral), `markReferralEligible` on won deal, reward payout (paid flag + date)
     - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.7_
-  - [ ] 26.5 Build referrals UI and buyer-portal "Refer a Friend" section
+  - [x] 26.5 Build referrals UI and buyer-portal "Refer a Friend" section
     - Programs list with create/edit, referral tracking, shareable link; buyer-portal refer-a-friend linked to active program
     - _Requirements: 19.5, 19.6_
 
@@ -492,11 +492,11 @@ This plan implements 16 new modules additively on top of the existing Next.js (A
   - [ ]* 27.1 Property test: audit entry on status and financial actions
     - **Property 69: Audit entry on status and financial actions**
     - **Validates: Requirements 20.7**
-  - [ ]* 27.2 Smoke test: schema sync, build, and referential integrity gate
+  - [x]* 27.2 Smoke test: schema sync, build, and referential integrity gate
     - `npx prisma db push` applies cleanly, `npm run build` completes with zero errors, referential-integrity check on seeded data, existing `(dashboard)` auth unchanged
     - _Requirements: 20.2, 20.3, 20.8, 21.4_
 
-- [ ] 28. Final checkpoint - Ensure all tests pass
+- [x] 28. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

@@ -62,6 +62,7 @@ const positiveMoneyArb: fc.Arbitrary<number> = fc
 const dateArb: fc.Arbitrary<Date> = fc.date({
     min: new Date('2000-01-01T00:00:00.000Z'),
     max: new Date('2050-12-31T23:59:59.000Z'),
+    noInvalidDate: true,
 })
 
 /**

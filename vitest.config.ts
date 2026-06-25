@@ -17,11 +17,18 @@ export default defineConfig({
         // Node environment: the property-tested logic is pure and server-side.
         environment: 'node',
         globals: true,
+        // Load .env (DATABASE_URL, etc.) so DB-backed integration tests can
+        // reach the local Postgres instance. Harmless for the pure tests,
+        // which never touch the database.
+        setupFiles: ['dotenv/config'],
         include: [
             'lib/**/*.test.{ts,tsx}',
             'app/**/*.test.{ts,tsx}',
             'test/**/*.test.{ts,tsx}',
         ],
         exclude: ['node_modules', '.next', 'ai-agent'],
+        // DB-backed integration tests need more headroom than pure unit tests.
+        testTimeout: 30000,
+        hookTimeout: 30000,
     },
 })

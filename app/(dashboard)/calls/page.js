@@ -292,8 +292,8 @@ export default function CallsPage() {
               key={f}
               onClick={() => setDirectionFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${directionFilter === f
-                  ? 'bg-accent/20 text-accent border border-accent/30'
-                  : 'bg-surface border border-border text-muted hover:text-foreground'
+                ? 'bg-accent/20 text-accent border border-accent/30'
+                : 'bg-surface border border-border text-muted hover:text-foreground'
                 }`}
             >
               {f}
@@ -306,8 +306,8 @@ export default function CallsPage() {
               key={f}
               onClick={() => setStatusFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${statusFilter === f
-                  ? 'bg-accent/20 text-accent border border-accent/30'
-                  : 'bg-surface border border-border text-muted hover:text-foreground'
+                ? 'bg-accent/20 text-accent border border-accent/30'
+                : 'bg-surface border border-border text-muted hover:text-foreground'
                 }`}
             >
               {f}
@@ -449,8 +449,8 @@ export default function CallsPage() {
               key={f}
               onClick={() => setTagFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tagFilter === f
-                  ? 'bg-accent/20 text-accent border border-accent/30'
-                  : 'bg-surface border border-border text-muted hover:text-foreground'
+                ? 'bg-accent/20 text-accent border border-accent/30'
+                : 'bg-surface border border-border text-muted hover:text-foreground'
                 }`}
             >
               {f}
@@ -565,8 +565,8 @@ export default function CallsPage() {
                     >
                       <div
                         className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${msg.from === 'agent'
-                            ? 'bg-accent/10 border border-accent/20 text-foreground'
-                            : 'bg-surface border border-border text-foreground'
+                          ? 'bg-accent/10 border border-accent/20 text-foreground'
+                          : 'bg-surface border border-border text-foreground'
                           }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
@@ -637,11 +637,13 @@ export default function CallsPage() {
               <label className="text-sm text-muted mb-1 block">Purpose</label>
               <select className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-accent/50">
                 <option value="">Select purpose...</option>
-                <option>Showroom Visit</option>
-                <option>Product Demo</option>
-                <option>Measurement Visit</option>
-                <option>Design Consultation</option>
-                <option>Delivery Coordination</option>
+                <option>Site Visit Scheduling</option>
+                <option>Project Information</option>
+                <option>Cost Sheet Discussion</option>
+                <option>Negotiation</option>
+                <option>Booking Follow-up</option>
+                <option>Payment / Demand Follow-up</option>
+                <option>Documentation</option>
                 <option>Complaint Resolution</option>
                 <option>Follow-up Meeting</option>
               </select>
@@ -994,13 +996,14 @@ export default function CallsPage() {
                 >
                   <option value="">Select reason...</option>
                   <option value="Follow up on inquiry">Follow up on inquiry</option>
+                  <option value="Site visit reminder">Site visit reminder</option>
                   <option value="Appointment reminder">Appointment reminder</option>
-                  <option value="Delivery update">Delivery update</option>
-                  <option value="Quotation follow-up">Quotation follow-up</option>
+                  <option value="Cost sheet follow-up">Cost sheet follow-up</option>
+                  <option value="Negotiation follow-up">Negotiation follow-up</option>
+                  <option value="Booking status update">Booking status update</option>
+                  <option value="Payment / demand reminder">Payment / demand reminder</option>
+                  <option value="New project / inventory launch">New project / inventory launch</option>
                   <option value="Feedback collection">Feedback collection</option>
-                  <option value="New collection announcement">New collection announcement</option>
-                  <option value="Payment reminder">Payment reminder</option>
-                  <option value="Order status update">Order status update</option>
                   <option value="Custom reason">Custom reason</option>
                 </select>
               </div>
@@ -1057,10 +1060,10 @@ export default function CallsPage() {
             <div className="flex flex-col items-center py-6">
               {/* Call visualization */}
               <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-4 transition-all ${browserCallState === 'connected'
-                  ? 'bg-emerald-500/20 border-2 border-emerald-500/40 animate-pulse'
-                  : browserCallState === 'connecting'
-                    ? 'bg-amber-500/20 border-2 border-amber-500/40 animate-pulse'
-                    : 'bg-surface border-2 border-border'
+                ? 'bg-emerald-500/20 border-2 border-emerald-500/40 animate-pulse'
+                : browserCallState === 'connecting'
+                  ? 'bg-amber-500/20 border-2 border-amber-500/40 animate-pulse'
+                  : 'bg-surface border-2 border-border'
                 }`}>
                 {browserCallState === 'connected' ? (
                   <Volume2 className="w-10 h-10 text-emerald-600" />
@@ -1087,10 +1090,10 @@ export default function CallsPage() {
               <button
                 onClick={handleBrowserCall}
                 className={`flex items-center gap-2 px-8 py-3 rounded-2xl text-sm font-semibold transition-all ${browserCallState === 'connected'
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : browserCallState === 'connecting'
-                      ? 'bg-amber-500/20 text-amber-700 cursor-wait'
-                      : 'bg-teal-600 text-white hover:bg-teal-700'
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : browserCallState === 'connecting'
+                    ? 'bg-amber-500/20 text-amber-700 cursor-wait'
+                    : 'bg-teal-600 text-white hover:bg-teal-700'
                   }`}
                 disabled={browserCallState === 'connecting'}
               >
@@ -1238,8 +1241,8 @@ export default function CallsPage() {
             Refresh
           </button>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${agentStatus?.configured
-              ? 'bg-emerald-500/10 border border-emerald-500/20'
-              : 'bg-zinc-500/10 border border-zinc-500/20'
+            ? 'bg-emerald-500/10 border border-emerald-500/20'
+            : 'bg-zinc-500/10 border border-zinc-500/20'
             }`}>
             <div className={`w-2 h-2 rounded-full ${agentStatus?.configured ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
             <span className={`text-xs font-medium ${agentStatus?.configured ? 'text-emerald-700' : 'text-muted'}`}>
@@ -1262,8 +1265,8 @@ export default function CallsPage() {
                   setSearchQuery('');
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                    ? 'bg-accent/20 text-accent shadow-sm'
-                    : 'text-muted hover:text-foreground hover:bg-surface-hover'
+                  ? 'bg-accent/20 text-accent shadow-sm'
+                  : 'text-muted hover:text-foreground hover:bg-surface-hover'
                   }`}
               >
                 <Icon className="w-4 h-4" />
@@ -1361,8 +1364,8 @@ export default function CallsPage() {
                   {(selectedCall.transcript.messages || []).map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.from === 'agent' ? 'justify-start' : 'justify-end'}`}>
                       <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${msg.from === 'agent'
-                          ? 'bg-accent/10 border border-accent/20'
-                          : 'bg-surface border border-border'
+                        ? 'bg-accent/10 border border-accent/20'
+                        : 'bg-surface border border-border'
                         }`}>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
@@ -1566,11 +1569,12 @@ export default function CallsPage() {
             <label className="text-sm text-muted mb-1 block">Purpose</label>
             <select className="w-full px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-accent/50">
               <option value="">Select purpose...</option>
-              <option>Showroom Visit</option>
-              <option>Product Demo</option>
-              <option>Measurement Visit</option>
-              <option>Design Consultation</option>
-              <option>Delivery Coordination</option>
+              <option>Site Visit Scheduling</option>
+              <option>Project Information</option>
+              <option>Cost Sheet Discussion</option>
+              <option>Negotiation</option>
+              <option>Booking Follow-up</option>
+              <option>Payment / Demand Follow-up</option>
               <option>Follow-up Meeting</option>
             </select>
           </div>

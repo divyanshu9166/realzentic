@@ -27,7 +27,9 @@ import {
     CheckCircle2,
     X,
     Download,
+    PenLine,
 } from 'lucide-react';
+import ESignatureModal from './ESignatureModal';
 import { toast } from 'sonner';
 import {
     uploadDocument,
@@ -154,6 +156,15 @@ export default function DocumentsClient({
     const [kycRecords, setKycRecords] = useState<KycRow[]>(initialKyc);
     const [activeTab, setActiveTab] = useState<EntityTab>('All');
 
+    // E-signature modal state.
+    const [eSignOpen, setESignOpen] = useState(false);
+    const [eSignDoc, setESignDoc] = useState<{ contactId?: number; documentId?: number } | null>(null);
+
+    function openESign(doc: DocumentRow) {
+        setESignDoc({ contactId: doc.entityType === 'Contact' ? doc.entityId : undefined, documentId: doc.id });
+        setESignOpen(true);
+    }
+
     // Expiry alert state (Req 8.7).
     const [windowDays, setWindowDays] = useState<number>(initialWindowDays);
     const [expiringIds, setExpiringIds] = useState<Set<number>>(new Set(initialExpiringIds));
@@ -248,7 +259,7 @@ export default function DocumentsClient({
                     })}
                 </div>
 
-                <DocumentTable documents={filteredDocuments} expiringIds={expiringIds} />
+                <DocumentTable documents={filteredDocuments} expiringIds={expiringIds} onRequestESign={openESign} />
             </div>
 
             {/* KYC + Templates */}
@@ -271,6 +282,18 @@ export default function DocumentsClient({
                     }
                 />
             </div>
+
+            {/* E-signature modal */}
+            <ESignatureModal
+                isOpen={eSignOpen}
+                onClose={() => setESignOpen(false)}
+                contactId={eSignDoc?.contactId}
+                documentId={eSignDoc?.documentId}
+                onSigned={(url) => {
+                    toast.success(`Signature captured: ${url.split('/').pop()}`);
+                    setESignOpen(false);
+                }}
+            />
         </div>
     );
 }
@@ -553,9 +576,11 @@ function UploadPanel({
 function DocumentTable({
     documents,
     expiringIds,
+    onRequestESign,
 }: {
     documents: DocumentRow[];
     expiringIds: Set<number>;
+    onRequestESign: (doc: DocumentRow) => void;
 }) {
     if (documents.length === 0) {
         return (
@@ -610,14 +635,24 @@ function DocumentTable({
                                 </td>
                                 <td className="text-xs text-muted">{formatDate(d.createdAt)}</td>
                                 <td>
-                                    <a
-                                        href={d.fileUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
-                                    >
-                                        Open <ExternalLink className="h-3 w-3" />
-                                    </a>
+                                    <div className="flex items-center gap-3">
+                                        <a
+                                            href={d.fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                                        >
+                                            Open <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                        <button
+                                            onClick={() => onRequestESign(d)}
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-accent transition-colors"
+                                            title="Request e-signature"
+                                        >
+                                            <PenLine className="h-3.5 w-3.5" />
+                                            Request e-sign
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         );

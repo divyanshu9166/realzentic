@@ -38,6 +38,7 @@ type StoredConfig = {
   created_at?: string | null;
   updated_at?: string | null;
   has_access_token: boolean;
+  has_app_secret: boolean;
 };
 
 type ConfigResponse = {
@@ -138,6 +139,7 @@ export function WhatsAppConfig() {
   const [testing, setTesting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [showToken, setShowToken] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
   const [config, setConfig] = useState<StoredConfig | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('unknown');
   const [resetReason, setResetReason] = useState<ResetReason>(null);
@@ -146,8 +148,10 @@ export function WhatsAppConfig() {
   const [phoneNumberId, setPhoneNumberId] = useState('');
   const [wabaId, setWabaId] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [appSecret, setAppSecret] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
   const [tokenEdited, setTokenEdited] = useState(false);
+  const [secretEdited, setSecretEdited] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const isDirtyRef = useRef(false);
@@ -215,8 +219,10 @@ export function WhatsAppConfig() {
           setPhoneNumberId(nextConfig.phone_number_id || '');
           setWabaId(nextConfig.waba_id || '');
           setAccessToken(nextConfig.has_access_token ? MASKED_TOKEN : '');
+          setAppSecret(nextConfig.has_app_secret ? MASKED_TOKEN : '');
           setVerifyToken('');
           setTokenEdited(false);
+          setSecretEdited(false);
         }
       } else {
         setConfig(null);
@@ -224,8 +230,10 @@ export function WhatsAppConfig() {
           setPhoneNumberId('');
           setWabaId('');
           setAccessToken('');
+          setAppSecret('');
           setVerifyToken('');
           setTokenEdited(false);
+          setSecretEdited(false);
         }
       }
 
@@ -269,6 +277,7 @@ export function WhatsAppConfig() {
         phoneNumberId?: string;
         wabaId?: string;
         accessToken?: string;
+        appSecret?: string;
         verifyToken?: string;
       };
 
@@ -285,12 +294,17 @@ export function WhatsAppConfig() {
         setAccessToken(saved.accessToken);
         setTokenEdited(true);
       }
+      if (typeof saved.appSecret === 'string' && saved.appSecret) {
+        setAppSecret(saved.appSecret);
+        setSecretEdited(true);
+      }
 
       if (
         saved.phoneNumberId ||
         saved.wabaId ||
         saved.verifyToken ||
-        saved.accessToken
+        saved.accessToken ||
+        saved.appSecret
       ) {
         isDirtyRef.current = true;
         setIsDirty(true);
@@ -339,6 +353,10 @@ export function WhatsAppConfig() {
         toast.error('Please re-enter the Access Token to update your configuration.');
         setSaving(false);
         return;
+      }
+
+      if (secretEdited && appSecret !== MASKED_TOKEN && appSecret.trim()) {
+        payload.app_secret = appSecret.trim();
       }
 
       const res = await fetch('/api/whatsapp/config', {
@@ -432,8 +450,10 @@ export function WhatsAppConfig() {
       setPhoneNumberId('');
       setWabaId('');
       setAccessToken('');
+      setAppSecret('');
       setVerifyToken('');
       setTokenEdited(false);
+      setSecretEdited(false);
       clearDraft();
       isDirtyRef.current = false;
       setIsDirty(false);
@@ -469,8 +489,8 @@ export function WhatsAppConfig() {
       {/* Connection Status Banner */}
       <div
         className={`glass-card flex items-center gap-3 px-4 sm:px-5 py-3.5 ${connectionStatus === 'connected'
-            ? 'border-green-500/30 bg-green-50/50'
-            : 'border-red-500/20 bg-red-50/30'
+          ? 'border-green-500/30 bg-green-50/50'
+          : 'border-red-500/20 bg-red-50/30'
           }`}
         style={{
           borderColor:
@@ -619,6 +639,47 @@ export function WhatsAppConfig() {
               </div>
 
               <div className="space-y-1.5">
+                <Label className="text-foreground text-xs sm:text-sm">
+                  App Secret <span className="text-muted">(required for webhooks)</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showSecret ? 'text' : 'password'}
+                    placeholder="Enter your Meta App Secret"
+                    value={appSecret}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setAppSecret(value);
+                      setSecretEdited(true);
+                      markDirty();
+                      saveDraft({ appSecret: value });
+                    }}
+                    onFocus={() => {
+                      if (appSecret === MASKED_TOKEN) {
+                        setAppSecret('');
+                        setSecretEdited(true);
+                        markDirty();
+                        saveDraft({ appSecret: '' });
+                      }
+                    }}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground transition-colors p-1"
+                  >
+                    {showSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted">
+                  From Meta → App Settings → Basic → App Secret. Used to verify
+                  that incoming webhooks genuinely came from Meta. Without it,
+                  webhook events are rejected.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label className="text-foreground text-xs sm:text-sm">Webhook Verify Token</Label>
                 <Input
                   placeholder="Create a custom verify token"
@@ -753,6 +814,7 @@ export function WhatsAppConfig() {
                   <li>Copy your <strong className="text-foreground">Phone Number ID</strong></li>
                   <li>Copy your <strong className="text-foreground">WhatsApp Business Account ID</strong></li>
                   <li>Generate a <strong className="text-foreground">Permanent Access Token</strong> from Business Settings &gt; System Users</li>
+                  <li>Copy your <strong className="text-foreground">App Secret</strong> from App Settings &gt; Basic</li>
                 </ol>
               </SetupStep>
 

@@ -16,6 +16,7 @@ import { LayoutGrid } from 'lucide-react';
 import { listDealsForBoard } from '@/app/actions/deals';
 import DealsBoard, { type BoardColumn, type BoardDealCard } from './DealsBoard';
 import AtRiskPanel from './AtRiskPanel';
+import NewDealButton from './NewDealButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,7 @@ export default async function DealsPage() {
                         {totalDeals === 1 ? '' : 's'}.
                     </p>
                 </div>
+                <NewDealButton />
             </div>
 
             {!res.success ? (

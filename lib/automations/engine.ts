@@ -180,7 +180,7 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<void> {
       automation_id: args.automation.id,
       position: { gte: args.startPosition }
     }
-    
+
     if (args.parentStepId === null) {
       whereClause.parent_step_id = null
     } else {
@@ -243,12 +243,15 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<void> {
             status: 'success',
             detail: `branch=${taken ? 'yes' : 'no'}`,
           })
+          // Execute the chosen branch — pass logId: null so the branch
+          // recursion does NOT write to the log itself (we accumulate all
+          // results in the outer `results` array and write once at the end).
           await executeStepsFrom({
             ...args,
             parentStepId: step.id,
             branch: taken ? 'yes' : 'no',
             startPosition: 0,
-            logId: args.logId,
+            logId: null,
           })
           continue
         }
@@ -308,17 +311,17 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
       const conversationId = await resolveConversationId(args)
       const params = cfg.variables
         ? Object.keys(cfg.variables)
-            .sort((a, b) => {
-              const na = Number(a)
-              const nb = Number(b)
-              const aNum = Number.isFinite(na)
-              const bNum = Number.isFinite(nb)
-              if (aNum && bNum) return na - nb
-              if (aNum) return -1
-              if (bNum) return 1
-              return a.localeCompare(b)
-            })
-            .map((k) => String(cfg.variables![k]))
+          .sort((a, b) => {
+            const na = Number(a)
+            const nb = Number(b)
+            const aNum = Number.isFinite(na)
+            const bNum = Number.isFinite(nb)
+            if (aNum && bNum) return na - nb
+            if (aNum) return -1
+            if (bNum) return 1
+            return a.localeCompare(b)
+          })
+          .map((k) => String(cfg.variables![k]))
         : []
       const { whatsapp_message_id } = await engineSendTemplate({
         userId: args.automation.user_id,
@@ -529,18 +532,18 @@ async function appendResults(
     where: { id: logId },
     select: { steps_executed: true, status: true }
   })
-  
+
   const merged = [
     ...((existing?.steps_executed as unknown as AutomationLogStepResult[]) ?? []),
     ...newItems,
   ]
   const update: Record<string, unknown> = { steps_executed: merged as any }
-  
+
   if (status !== null) {
     update.status = status
   }
   if (errorMessage) update.error_message = errorMessage
-  
+
   await prisma.waAutomationLog.update({
     where: { id: logId },
     data: update as any

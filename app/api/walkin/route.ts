@@ -59,12 +59,12 @@ export async function GET() {
   try {
     const settings = await prisma.storeSettings.findFirst({ where: { id: 1 } })
     return NextResponse.json({
-      storeName: settings?.storeName || 'Furniture Store',
+      storeName: settings?.storeName || 'Realzentic',
       logo: settings?.logo || null,
     })
   } catch {
     return NextResponse.json({
-      storeName: 'Furniture Store',
+      storeName: 'Realzentic',
       logo: null,
     })
   }

@@ -14,7 +14,6 @@ import {
     ArrowLeft,
     Activity,
     FileText,
-    Milestone,
     ReceiptIndianRupee,
     Flame,
     AlertTriangle,
@@ -24,6 +23,8 @@ import {
 } from 'lucide-react';
 import { getDealDetail } from '@/app/actions/deals';
 import AiMatchPanel from '@/components/AiMatchPanel';
+import MilestoneTracker, { type MilestoneView } from './MilestoneTracker';
+import SnagPanel from './SnagPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,14 +57,6 @@ function formatDateTime(value: Date | string | null | undefined): string {
             minute: '2-digit',
         });
 }
-
-const MILESTONE_STATUS_CLASSES: Record<string, string> = {
-    Upcoming: 'bg-slate-500/10 text-slate-600',
-    Due: 'bg-amber-500/10 text-amber-700',
-    Overdue: 'bg-red-500/10 text-red-600',
-    Paid: 'bg-emerald-500/10 text-emerald-700',
-    Partially_Paid: 'bg-blue-500/10 text-blue-700',
-};
 
 const DOC_STATUS_CLASSES: Record<string, string> = {
     Pending: 'bg-amber-500/10 text-amber-700',
@@ -111,6 +104,24 @@ export default async function DealDetailPage({
     }
 
     const { deal, timeline, documents, milestones, costSheet } = res.data;
+
+    // Serialize milestones (Decimal -> number, Date -> Date) for the client tracker.
+    const milestoneViews: MilestoneView[] = milestones.map((m) => ({
+        id: m.id,
+        name: m.name,
+        dueDate: m.dueDate,
+        amount: num(m.amount),
+        paidAmount: num(m.paidAmount),
+        status: m.status,
+        demandLetters: (m.demandLetters ?? []).map((l) => ({
+            id: l.id,
+            windowDays: l.windowDays,
+            generatedAt: l.generatedAt,
+            whatsappStatus: l.whatsappStatus,
+            emailStatus: l.emailStatus,
+            sentDate: l.sentDate,
+        })),
+    }));
 
     return (
         <div className="space-y-6">
@@ -201,52 +212,8 @@ export default async function DealDetailPage({
 
                 {/* Right column: milestones + documents */}
                 <div className="space-y-5">
-                    {/* Milestone tracker */}
-                    <div className="glass-card p-5">
-                        <div className="mb-4 flex items-center gap-2">
-                            <Milestone className="h-4 w-4 text-accent" />
-                            <h2 className="text-base font-semibold text-foreground">Milestone Tracker</h2>
-                        </div>
-                        {milestones.length === 0 ? (
-                            <p className="py-6 text-center text-sm text-muted">
-                                No payment milestones yet. Convert this deal to a booking to generate a schedule.
-                            </p>
-                        ) : (
-                            <ul className="space-y-3">
-                                {milestones.map((m) => {
-                                    const amount = num(m.amount);
-                                    const paid = num(m.paidAmount);
-                                    const pct = amount > 0 ? Math.min(100, Math.round((paid / amount) * 100)) : 0;
-                                    const statusClass =
-                                        MILESTONE_STATUS_CLASSES[m.status] ?? 'bg-slate-500/10 text-slate-600';
-                                    return (
-                                        <li key={m.id} className="rounded-lg border border-border bg-surface/60 p-3">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <p className="text-sm font-medium text-foreground">{m.name}</p>
-                                                <span
-                                                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClass}`}
-                                                >
-                                                    {m.status.replace(/_/g, ' ')}
-                                                </span>
-                                            </div>
-                                            <div className="mt-1 flex items-center justify-between text-[11px] text-muted">
-                                                <span>Due {formatDate(m.dueDate)}</span>
-                                                <span>
-                                                    {formatINR(paid)} / {formatINR(amount)}
-                                                </span>
-                                            </div>
-                                            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
-                                                <div
-                                                    className="h-full rounded-full bg-accent transition-all"
-                                                    style={{ width: `${pct}%` }}
-                                                />
-                                            </div>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </div>
+                    {/* Milestone tracker with per-milestone demand/payment actions (Req 9.5) */}
+                    <MilestoneTracker milestones={milestoneViews} />
 
                     {/* Documents */}
                     <div className="glass-card p-5">
@@ -363,6 +330,11 @@ export default async function DealDetailPage({
                     </div>
                 )}
             </div>
+
+            {/* Snag / Defect reports */}
+            {deal.booking && (
+                <SnagPanel bookingId={deal.booking.id} />
+            )}
 
             {/* AI-suggested units — Req 16.5 */}
             <div className="glass-card p-5">

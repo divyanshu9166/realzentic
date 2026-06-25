@@ -14,6 +14,7 @@ import {
 import Modal from '@/components/Modal';
 import { getStaff, getDailyAttendanceReport, updateStaffTarget } from '@/app/actions/staff';
 import { getStoreCampaigns } from '@/app/actions/settings';
+import AgentTargetsTab from './AgentTargetsTab';
 
 const staffRoles = ["All", "Senior Sales Executive", "Sales Executive", "Junior Sales Executive", "Design Consultant", "Warehouse Manager"];
 
@@ -109,6 +110,7 @@ export default function StaffPage() {
     { key: 'activity', label: 'Activity Log', icon: Activity },
     { key: 'field', label: 'Field Operations', icon: MapPin },
     { key: 'inventory', label: 'Stock Updates', icon: Warehouse },
+    { key: 'agent-targets', label: 'Targets', icon: TrendingUp },
   ];
 
   const openEditTarget = (member) => {
@@ -876,6 +878,9 @@ export default function StaffPage() {
           </div>
         </div>
       )}
+
+      {/* ===== AGENT TARGETS TAB ===== */}
+      {tab === 'agent-targets' && <AgentTargetsTab />}
 
       {/* ===== STAFF DETAIL MODAL ===== */}
       <Modal isOpen={!!selectedStaff} onClose={() => setSelectedStaff(null)} title="Staff Profile" size="xl">

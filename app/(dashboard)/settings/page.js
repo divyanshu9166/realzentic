@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Store, Users, Link2, Bell, Bot, Save, Plus, MapPin, Crosshair, ChevronDown, ChevronUp, Copy, Check, Eye, EyeOff, Upload, Loader2, Mail, Send, CheckCircle2, XCircle, Package, RefreshCw, User, FileText } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { getStoreSettings, updateStoreSettings } from '@/app/actions/settings';
 import { getStaff, createStaff, assignStaffLogin, updateStaffMember } from '@/app/actions/staff';
 import { getChannelConfigs, upsertChannelConfig } from '@/app/actions/channels';
@@ -541,7 +542,7 @@ export default function SettingsPage() {
       <div className="space-y-6 animate-pulse">
         <div className="h-8 w-48 bg-surface rounded-lg" />
         <div className="flex gap-6">
-          <div className="hidden sm:block w-56 space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-surface rounded-xl" />)}</div>
+          <div className="hidden sm:block w-56 space-y-2">{[1, 2, 3, 4, 5].map(i => <div key={i} className="h-10 bg-surface rounded-xl" />)}</div>
           <div className="flex-1 h-96 bg-surface rounded-2xl" />
         </div>
       </div>
@@ -1329,6 +1330,19 @@ export default function SettingsPage() {
               <div className="mt-6">
                 <h2 className="text-lg font-semibold text-foreground mb-2">Other Integrations</h2>
                 <IndiaMartIntegrationSettings />
+                <Link
+                  href="/settings/portals"
+                  className="glass-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mt-3 hover:bg-surface-hover transition-colors"
+                >
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <span className="text-2xl">🏢</span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Property Portal Integrations</p>
+                      <p className="text-xs text-muted">Auto-capture leads from 99acres, MagicBricks, Housing.com & NoBroker</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium text-accent">Configure →</span>
+                </Link>
                 {nonChannelIntegrations.map((int, i) => (
                   <div key={i} className="glass-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mt-3">
                     <div className="flex items-center gap-3 sm:gap-4">
@@ -1552,7 +1566,7 @@ export default function SettingsPage() {
                 </div>
                 <div><label className="block text-xs font-medium text-muted mb-1.5">Auto Follow-up Schedule</label>
                   <div className="space-y-2">
-                    {['Day 1: Share product catalog','Day 3: Schedule showroom visit','Day 7: Share discount offer'].map((d,i) => (
+                    {['Day 1: Share product catalog', 'Day 3: Schedule showroom visit', 'Day 7: Share discount offer'].map((d, i) => (
                       <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-surface-hover text-sm text-foreground"><Bot className="w-4 h-4 text-accent flex-shrink-0" />{d}</div>
                     ))}
                   </div>

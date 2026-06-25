@@ -312,11 +312,14 @@ function revalidateVisitPaths() {
 
 export type OtpChannel = 'whatsapp' | 'sms'
 
-export interface OtpDeliveryResult {
-  ok: boolean
-  channel?: OtpChannel
-  error?: string
-}
+/**
+ * Outcome of an OTP delivery attempt. Discriminated on `ok` so that a
+ * successful result is guaranteed to carry a `channel` and a failed one
+ * an `error` — callers can narrow without optional-chaining.
+ */
+export type OtpDeliveryResult =
+  | { ok: true; channel: OtpChannel }
+  | { ok: false; error: string }
 
 export interface OtpTransports {
   sendWhatsApp?: (phoneE164: string, otp: string) => Promise<void>
@@ -394,7 +397,13 @@ async function deliverOtp(
  * @param input  visitId + buyerPhone (+ optional otpLength).
  * @param transports  optional transport overrides for testing.
  */
-export async function sendCheckinOtp(input: unknown, transports?: OtpTransports) {
+export async function sendCheckinOtp(
+  input: unknown,
+  transports?: OtpTransports,
+): Promise<
+  | { success: true; data: { visitId: number; channel: 'whatsapp' | 'sms' } }
+  | { success: false; error: string }
+> {
   const parsed = sendCheckinOtpSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
 
@@ -433,7 +442,12 @@ export async function sendCheckinOtp(input: unknown, transports?: OtpTransports)
  * `otpVerified` flag is set; on a mismatch the check-in is rejected with an
  * error and the flag is left unchanged (Req 12.3).
  */
-export async function verifyCheckinOtp(input: unknown) {
+export async function verifyCheckinOtp(
+  input: unknown,
+): Promise<
+  | { success: true; data: { visitId: number; otpVerified: boolean } }
+  | { success: false; error: string }
+> {
   const parsed = verifyCheckinOtpSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
 
