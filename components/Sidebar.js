@@ -37,6 +37,7 @@ import {
   CalendarDays,
   Landmark,
   Scale,
+  Navigation,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSession } from '@/components/AuthProvider';
@@ -63,6 +64,7 @@ const navItems = [
   { href: '/appointments', label: 'Appointments', icon: Calendar },
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/field-visits', label: 'Site Visits', icon: MapPinned },
+  { href: '/live-tracking', label: 'Live Tracking', icon: Navigation, roles: ['ADMIN', 'MANAGER'] },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
   { href: '/documents', label: 'Documents & KYC', icon: FileText, roles: ['ADMIN', 'MANAGER', 'STAFF'] },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },

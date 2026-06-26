@@ -265,6 +265,7 @@ model Staff {
   loanApplications LoanApplication[]
   agentTargets AgentTarget[]
   snagReports SnagReport[]
+  agentLocations AgentLocation[]
 
   @@index([email])
 }
@@ -2362,6 +2363,28 @@ model AgentTarget {
   @@unique([staffId, period])
   @@index([staffId])
   @@index([period])
+}
+
+// ─── LIVE AGENT LOCATION TRACKING ─────────────────────
+// Append-only stream of GPS pings pushed by an on-shift agent's device.
+// The newest ping per agent powers the live field-force map; older pings
+// form a movement trail. Pings are immutable once written.
+
+model AgentLocation {
+  id         Int      @id @default(autoincrement())
+  staffId    Int
+  staff      Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  latitude   Float
+  longitude  Float
+  accuracyM  Float? // GPS accuracy radius in meters, if reported
+  speed      Float? // device speed in m/s, if reported
+  heading    Float? // direction of travel in degrees (0..360), if reported
+  visitId    Int? // optional active site-visit context (plain Int, no FK)
+  recordedAt DateTime @default(now())
+
+  @@index([staffId])
+  @@index([recordedAt])
+  @@index([staffId, recordedAt])
 }
 
 // ─── SNAG / DEFECT MANAGEMENT ─────────────────────────

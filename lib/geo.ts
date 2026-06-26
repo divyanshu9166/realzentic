@@ -207,3 +207,69 @@ export function computeVisitAnalytics(visits: VisitRecord[]): VisitAnalytics {
         averageDuration: average(durations),
     }
 }
+
+// ─── Live agent-presence classification (Live Field-Force Tracking) ──────────
+
+/**
+ * Presence state derived from how long ago an agent's last GPS ping arrived.
+ *   - `online`  — pinged within `onlineWithinSec`.
+ *   - `away`    — pinged within `awayWithinSec` (but not recently enough for online).
+ *   - `offline` — no ping within `awayWithinSec` (or never pinged).
+ */
+export type AgentPresence = 'online' | 'away' | 'offline'
+
+/** Default: a ping is "online" if seen within the last 60s. */
+export const DEFAULT_ONLINE_WITHIN_SEC = 60
+
+/** Default: a ping is "away" if seen within the last 5 minutes. */
+export const DEFAULT_AWAY_WITHIN_SEC = 300
+
+/**
+ * Classify an agent's live presence from the age of their most recent ping.
+ *
+ * Pure and deterministic: both "now" and the last-seen instant are passed in
+ * as epoch-millisecond numbers. A `null`/`undefined` last-seen (the agent has
+ * never pinged) is always `offline`. The boundaries are inclusive: an age of
+ * exactly `onlineWithinSec` is still `online`, and exactly `awayWithinSec` is
+ * still `away`. Future-dated pings (negative age, e.g. minor clock skew) are
+ * treated as `online`.
+ *
+ * @param lastSeenMs       Epoch ms of the agent's latest ping, or null/undefined.
+ * @param nowMs            Epoch ms of the current instant.
+ * @param onlineWithinSec  Max age (seconds) to be considered online.
+ * @param awayWithinSec    Max age (seconds) to be considered away.
+ * @throws if `onlineWithinSec` or `awayWithinSec` is not a finite, non-negative
+ *         number, or if `onlineWithinSec > awayWithinSec`.
+ */
+export function classifyPresence(
+    lastSeenMs: number | null | undefined,
+    nowMs: number,
+    onlineWithinSec: number = DEFAULT_ONLINE_WITHIN_SEC,
+    awayWithinSec: number = DEFAULT_AWAY_WITHIN_SEC
+): AgentPresence {
+    for (const [name, value] of [
+        ['onlineWithinSec', onlineWithinSec],
+        ['awayWithinSec', awayWithinSec],
+        ['nowMs', nowMs],
+    ] as const) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            throw new Error(`classifyPresence expects a finite ${name}, received: ${String(value)}`)
+        }
+    }
+    if (onlineWithinSec < 0 || awayWithinSec < 0) {
+        throw new Error('classifyPresence thresholds must be non-negative')
+    }
+    if (onlineWithinSec > awayWithinSec) {
+        throw new Error('classifyPresence requires onlineWithinSec <= awayWithinSec')
+    }
+
+    if (typeof lastSeenMs !== 'number' || !Number.isFinite(lastSeenMs)) {
+        return 'offline'
+    }
+
+    const ageSec = (nowMs - lastSeenMs) / 1000
+    // Future-dated or just-now pings are online.
+    if (ageSec <= onlineWithinSec) return 'online'
+    if (ageSec <= awayWithinSec) return 'away'
+    return 'offline'
+}

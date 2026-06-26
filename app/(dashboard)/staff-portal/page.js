@@ -19,6 +19,7 @@ import Modal from '@/components/Modal';
 import { getStaff, getStaffPortalProfile, clockIn as serverClockIn, clockOut as serverClockOut, getMonthAttendance, verifyStaffPortalPassword } from '@/app/actions/staff';
 import { getStaffVisits, updateFieldVisit, logSelfVisit, getSelfVisits, updateSelfVisitPhotos } from '@/app/actions/field-visits';
 import { moveSelfVisitToDraft } from '@/app/actions/drafts';
+import LiveTrackingBeacon from '@/components/LiveTrackingBeacon';
 
 const activityIcons = {
   call: { icon: Phone, color: 'bg-blue-500/10 text-blue-700', label: 'Call' },
@@ -605,6 +606,8 @@ export default function StaffPortalPage() {
       {/* ===== MY DASHBOARD ===== */}
       {tab === 'dashboard' && (
         <div className="space-y-6">
+          {/* Live location sharing (agent-controlled) */}
+          <LiveTrackingBeacon />
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="glass-card p-4 flex items-center gap-3">
@@ -809,9 +812,8 @@ export default function StaffPortalPage() {
                       <p className="text-sm font-semibold text-foreground">{visit.customer}</p>
                       <p className="text-xs text-muted flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" /> {visit.address}</p>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium ${
-                      visit.status === 'In Progress' ? 'bg-blue-500/10 text-blue-700' : 'bg-amber-500/10 text-amber-700'
-                    }`}>{visit.status}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium ${visit.status === 'In Progress' ? 'bg-blue-500/10 text-blue-700' : 'bg-amber-500/10 text-amber-700'
+                      }`}>{visit.status}</span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-muted mb-2">
                     <span><Calendar className="w-3 h-3 inline mr-1" />{visit.scheduledDate || visit.date}</span>
@@ -1037,15 +1039,15 @@ export default function StaffPortalPage() {
         const recordMap = {};
         monthAttendance.forEach(a => { recordMap[a.date] = a; });
 
-        const toDateStr = d => `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const toDateStr = d => `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
         // Stats
         const presentDays = monthAttendance.filter(a => a.status === 'Present').length;
-        const lateDays    = monthAttendance.filter(a => a.isLate).length;
-        const absentDays  = monthAttendance.filter(a => a.status === 'Absent').length;
-        const workedRecs  = monthAttendance.filter(a => a.hours > 0);
-        const totalHours  = workedRecs.reduce((s, a) => s + a.hours, 0);
-        const avgHours    = workedRecs.length > 0 ? (totalHours / workedRecs.length).toFixed(1) : '0.0';
+        const lateDays = monthAttendance.filter(a => a.isLate).length;
+        const absentDays = monthAttendance.filter(a => a.status === 'Absent').length;
+        const workedRecs = monthAttendance.filter(a => a.hours > 0);
+        const totalHours = workedRecs.reduce((s, a) => s + a.hours, 0);
+        const avgHours = workedRecs.length > 0 ? (totalHours / workedRecs.length).toFixed(1) : '0.0';
         // Attendance rate = present days / working days elapsed this month
         const workingDaysElapsed = (() => {
           let count = 0;
@@ -1123,9 +1125,9 @@ export default function StaffPortalPage() {
             <div className="grid grid-cols-4 gap-3">
               {[
                 { label: 'Present', value: presentDays, sub: `${attendanceRate}% rate`, color: 'text-emerald-600', bg: 'bg-emerald-500/10', bar: 'bg-emerald-500' },
-                { label: 'Absent',  value: absentDays,  sub: `${workingDaysElapsed} work days`, color: 'text-red-600',     bg: 'bg-red-500/10',     bar: 'bg-red-500' },
-                { label: 'Late',    value: lateDays,    sub: 'arrivals',          color: 'text-amber-600', bg: 'bg-amber-500/10', bar: 'bg-amber-500' },
-                { label: 'Avg',     value: `${avgHours}h`, sub: `${totalHours.toFixed(1)}h total`, color: 'text-blue-600',    bg: 'bg-blue-500/10',  bar: 'bg-blue-500' },
+                { label: 'Absent', value: absentDays, sub: `${workingDaysElapsed} work days`, color: 'text-red-600', bg: 'bg-red-500/10', bar: 'bg-red-500' },
+                { label: 'Late', value: lateDays, sub: 'arrivals', color: 'text-amber-600', bg: 'bg-amber-500/10', bar: 'bg-amber-500' },
+                { label: 'Avg', value: `${avgHours}h`, sub: `${totalHours.toFixed(1)}h total`, color: 'text-blue-600', bg: 'bg-blue-500/10', bar: 'bg-blue-500' },
               ].map(s => (
                 <div key={s.label} className="glass-card p-4 flex flex-col gap-2">
                   <div className={`w-8 h-8 rounded-xl ${s.bg} flex items-center justify-center`}>
@@ -1162,7 +1164,7 @@ export default function StaffPortalPage() {
             <div className="glass-card p-5">
               <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Month Overview</p>
               <div className="grid grid-cols-7 gap-y-2 gap-x-1 mb-2">
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                   <div key={d} className="text-center text-[10px] text-zinc-500 font-medium">{d}</div>
                 ))}
               </div>
@@ -1184,9 +1186,9 @@ export default function StaffPortalPage() {
               <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border flex-wrap">
                 {[
                   { dot: 'bg-emerald-500', label: 'Present' },
-                  { dot: 'bg-amber-500',   label: 'Late' },
-                  { dot: 'bg-red-500',     label: 'Absent' },
-                  { dot: 'bg-orange-400',  label: 'Half Day' },
+                  { dot: 'bg-amber-500', label: 'Late' },
+                  { dot: 'bg-red-500', label: 'Absent' },
+                  { dot: 'bg-orange-400', label: 'Half Day' },
                   { dot: 'bg-zinc-600/30', label: 'No record' },
                 ].map(l => (
                   <div key={l.label} className="flex items-center gap-1.5">
