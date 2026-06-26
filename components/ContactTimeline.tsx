@@ -9,6 +9,7 @@
  *   - A type-filter pill row to show only selected entry types (Req 14.4)
  *   - Infinite scroll: "Load more" trigger appends the next page from
  *     `getContactTimeline` using the cursor returned by the server (Req 14.5)
+ *   - AI "Summarize Chat" button for contacts with WhatsApp messages
  *
  * Requirements: 14.3, 14.4, 14.5
  */
@@ -27,8 +28,13 @@ import {
     ChevronDown,
     User,
     Clock,
+    Brain,
+    X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getContactTimeline } from '@/app/actions/timeline';
+import { summarizeWaConversation } from '@/app/actions/conversation-summary';
+import type { ConversationSummaryResult } from '@/app/actions/conversation-summary';
 import type { TimelineEntry, TimelineEntryType, TimelinePage } from '@/lib/timeline';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -203,6 +209,99 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
     );
 }
 
+// ─── AI Summary Panel ─────────────────────────────────────────────────────────
+
+const SENTIMENT_STYLES: Record<
+    ConversationSummaryResult['keyFacts']['sentiment'],
+    string
+> = {
+    positive: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+    neutral: 'bg-slate-500/10 text-slate-600 border-slate-400/20',
+    negative: 'bg-red-500/10 text-red-700 border-red-500/20',
+};
+
+const SENTIMENT_LABELS: Record<
+    ConversationSummaryResult['keyFacts']['sentiment'],
+    string
+> = {
+    positive: '😊 Positive',
+    neutral: '😐 Neutral',
+    negative: '😟 Negative',
+};
+
+function AiSummaryPanel({
+    summary,
+    onDismiss,
+}: {
+    summary: ConversationSummaryResult;
+    onDismiss: () => void;
+}) {
+    const { keyFacts } = summary;
+
+    return (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-3">
+            {/* Header row */}
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="text-sm font-semibold text-foreground">
+                        AI Conversation Summary
+                    </span>
+                    <span className="text-[11px] text-muted">
+                        ({summary.messageCount} messages)
+                    </span>
+                </div>
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    aria-label="Dismiss summary"
+                    className="text-xs text-muted hover:text-foreground underline underline-offset-2 flex items-center gap-1 transition-colors"
+                >
+                    <X className="w-3 h-3" />
+                    Dismiss
+                </button>
+            </div>
+
+            {/* Summary paragraph */}
+            <p className="text-sm text-foreground leading-relaxed">
+                {summary.summary}
+            </p>
+
+            {/* Key-facts badges */}
+            <div className="flex flex-wrap gap-2">
+                {keyFacts.budget && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border bg-amber-500/10 text-amber-700 border-amber-500/20">
+                        💰 Budget: {keyFacts.budget}
+                    </span>
+                )}
+                {keyFacts.propertyType && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border bg-violet-500/10 text-violet-700 border-violet-500/20">
+                        🏠 {keyFacts.propertyType}
+                    </span>
+                )}
+                {keyFacts.location && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border bg-cyan-500/10 text-cyan-700 border-cyan-500/20">
+                        📍 {keyFacts.location}
+                    </span>
+                )}
+                <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${SENTIMENT_STYLES[keyFacts.sentiment]}`}
+                >
+                    {SENTIMENT_LABELS[keyFacts.sentiment]}
+                </span>
+            </div>
+
+            {/* Next step */}
+            {keyFacts.nextStep && (
+                <p className="text-sm text-foreground">
+                    <span className="font-medium text-muted">Next step: </span>
+                    {keyFacts.nextStep}
+                </p>
+            )}
+        </div>
+    );
+}
+
 // ─── Root component ───────────────────────────────────────────────────────────
 
 export default function ContactTimeline({
@@ -220,6 +319,13 @@ export default function ContactTimeline({
     // Whether a "load more" fetch is in flight (Req 14.5).
     const [isPending, startTransition] = useTransition();
     const [fetchError, setFetchError] = useState<string | null>(null);
+
+    // AI conversation summary state.
+    const [summarizing, setSummarizing] = useState<boolean>(false);
+    const [summary, setSummary] = useState<ConversationSummaryResult | null>(null);
+
+    // Only show the button when there are message-type entries in the initial page.
+    const hasMessages = initialPage.items.some((e) => e.type === 'message');
 
     // ── Filter toggle ────────────────────────────────────────────────────────
 
@@ -248,6 +354,23 @@ export default function ContactTimeline({
         [activeFilter, contactId],
     );
 
+    // ── AI summarize handler ─────────────────────────────────────────────────
+
+    const handleSummarize = useCallback(async () => {
+        setSummarizing(true);
+        setSummary(null);
+        try {
+            const res = await summarizeWaConversation(contactId);
+            if (!res.success || !res.data) {
+                toast.error(res.error ?? 'AI summary unavailable');
+            } else {
+                setSummary(res.data);
+            }
+        } finally {
+            setSummarizing(false);
+        }
+    }, [contactId]);
+
     // ── Load next page (infinite scroll) ────────────────────────────────────
 
     const loadMore = useCallback(() => {
@@ -273,37 +396,64 @@ export default function ContactTimeline({
 
     return (
         <div className="space-y-5">
-            {/* Type-filter pill row (Req 14.4) */}
-            <div
-                role="group"
-                aria-label="Filter timeline by type"
-                className="flex flex-wrap gap-2"
-            >
-                {/* "All" chip */}
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (activeFilter !== null) handleFilterToggle(activeFilter);
-                    }}
-                    aria-pressed={activeFilter === null}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
-            ${activeFilter === null
-                            ? 'bg-accent/10 text-accent border-accent/30 ring-1 ring-accent/30'
-                            : 'bg-surface text-muted border-border hover:border-accent/40 hover:text-foreground'
-                        }`}
+            {/* Type-filter pill row + AI summarize button (Req 14.4) */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div
+                    role="group"
+                    aria-label="Filter timeline by type"
+                    className="flex flex-wrap gap-2"
                 >
-                    All
-                </button>
+                    {/* "All" chip */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (activeFilter !== null) handleFilterToggle(activeFilter);
+                        }}
+                        aria-pressed={activeFilter === null}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+            ${activeFilter === null
+                                ? 'bg-accent/10 text-accent border-accent/30 ring-1 ring-accent/30'
+                                : 'bg-surface text-muted border-border hover:border-accent/40 hover:text-foreground'
+                            }`}
+                    >
+                        All
+                    </button>
 
-                {ALL_TYPES.map((type) => (
-                    <FilterChip
-                        key={type}
-                        type={type}
-                        active={activeFilter === type}
-                        onToggle={handleFilterToggle}
-                    />
-                ))}
+                    {ALL_TYPES.map((type) => (
+                        <FilterChip
+                            key={type}
+                            type={type}
+                            active={activeFilter === type}
+                            onToggle={handleFilterToggle}
+                        />
+                    ))}
+                </div>
+
+                {/* AI "Summarize Chat" button — only rendered when there are message entries */}
+                {hasMessages && (
+                    <button
+                        type="button"
+                        onClick={handleSummarize}
+                        disabled={summarizing}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors shrink-0"
+                    >
+                        {summarizing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Brain className="w-4 h-4" />
+                        )}
+                        {summarizing ? 'Summarizing…' : '✨ Summarize Chat'}
+                    </button>
+                )}
             </div>
+
+            {/* AI Summary panel */}
+            {summary && (
+                <AiSummaryPanel
+                    summary={summary}
+                    onDismiss={() => setSummary(null)}
+                />
+            )}
 
             {/* Loading state when filter changed / initial load */}
             {isPending && entries.length === 0 && (

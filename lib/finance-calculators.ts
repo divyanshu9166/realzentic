@@ -62,13 +62,26 @@ export function loanEligibility(input: LoanEligibilityInput): LoanEligibilityRes
     const maxEmi = round2(Math.max(0, income * foir - obligations))
     if (maxEmi <= 0 || tenure <= 0) return { maxEmi, eligibleLoan: 0 }
 
+    // Undiscounted sum of all EMIs — the mathematical upper bound for the
+    // principal. With any positive interest the reverse-amortized principal is
+    // strictly smaller, so this also serves as a safe ceiling against the
+    // floating-point cancellation that the formula below suffers when `r` is
+    // extremely small.
+    const undiscounted = maxEmi * tenure
+
     let eligibleLoan: number
-    if (r === 0) {
-        eligibleLoan = maxEmi * tenure
+    // Treat negligibly small rates as zero: below this threshold the
+    // amortization formula loses all precision (g - 1 → ~machine epsilon) and
+    // the principal converges to the undiscounted sum anyway.
+    if (r < 1e-9) {
+        eligibleLoan = undiscounted
     } else {
         const g = Math.pow(1 + r, tenure)
         eligibleLoan = (maxEmi * (g - 1)) / (r * g)
     }
+    // Clamp to the undiscounted sum: positive interest can only reduce the
+    // supportable principal, never increase it past EMI × tenure.
+    eligibleLoan = Math.min(eligibleLoan, undiscounted)
     return { maxEmi, eligibleLoan: round2(eligibleLoan) }
 }
 

@@ -19,6 +19,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { recalcAllDeals } from '@/app/actions/ai-deal-predictor'
+import { bridgeWaDealToCrm } from '@/app/actions/wa-deal-bridge'
+import { prisma } from '@/lib/db'
 
 // ---------------------------------------------------------------------------
 // Security guard
@@ -50,6 +52,32 @@ export async function GET(req: NextRequest) {
     }
 
     try {
+        // -----------------------------------------------------------------------
+        // Step 0: Auto-bridge any won WaDeals that haven't been linked yet.
+        // Best-effort: individual errors are logged but do not abort the run.
+        // (Req: cron auto-bridge for status='won' && crm_deal_id IS NULL)
+        // -----------------------------------------------------------------------
+        try {
+            const unlinkedWonDeals = await prisma.waDeal.findMany({
+                where: { status: 'won', crm_deal_id: null },
+                select: { id: true },
+            })
+
+            console.log(`[cron/recalc-deals] auto-bridge: ${unlinkedWonDeals.length} won WaDeal(s) pending`)
+
+            await Promise.allSettled(
+                unlinkedWonDeals.map(async (d) => {
+                    try {
+                        await bridgeWaDealToCrm(d.id)
+                    } catch (bridgeErr) {
+                        console.error(`[cron/recalc-deals] auto-bridge failed for WaDeal ${d.id}:`, bridgeErr)
+                    }
+                }),
+            )
+        } catch (autoErr) {
+            console.error('[cron/recalc-deals] auto-bridge sweep failed (non-fatal):', autoErr)
+        }
+
         // Run the recalculation. `recalcAllDeals` is designed to:
         //   • Score each deal independently (failures don't abort the run).
         //   • Retain the last good score for any deal that fails.

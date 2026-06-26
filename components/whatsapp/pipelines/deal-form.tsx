@@ -27,6 +27,7 @@ import {
   MessageSquare,
   DollarSign,
   Loader2,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -67,6 +68,8 @@ export function DealForm({
   const [statusAction, setStatusAction] = useState<DealStatus | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [bridging, setBridging] = useState(false);
+  const [crmDealId, setCrmDealId] = useState<number | null | undefined>(undefined);
 
   async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
     const res = await fetch(input, init);
@@ -95,6 +98,7 @@ export function DealForm({
       setAssignedTo(deal.assigned_to ?? "");
       setExpectedCloseDate(deal.expected_close_date ?? "");
       setNotes(deal.notes ?? "");
+      setCrmDealId(deal.crm_deal_id ?? null);
     } else {
       setTitle("");
       setValue("");
@@ -104,6 +108,7 @@ export function DealForm({
       setAssignedTo("");
       setExpectedCloseDate("");
       setNotes("");
+      setCrmDealId(null);
     }
   }, [open, deal, defaultStageId, stages]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -149,6 +154,29 @@ export function DealForm({
       cancelled = true;
     };
   }, [open, contactId]);
+
+  async function handleBridge() {
+    if (!deal) return;
+    setBridging(true);
+    try {
+      const res = await fetch(`/api/whatsapp/deals/${deal.id}/bridge`, {
+        method: "POST",
+      });
+      const data: { success: boolean; crmDealId?: number; error?: string } =
+        await res.json().catch(() => ({ success: false, error: "Request failed" }));
+      if (!data.success) {
+        toast.error(data.error || "Failed to link deal to CRM");
+      } else {
+        setCrmDealId(data.crmDealId ?? null);
+        toast.success(`Linked to CRM deal #${data.crmDealId}`);
+      }
+    } catch (err) {
+      console.error("Bridge failed:", err);
+      toast.error("Failed to link deal to CRM");
+    } finally {
+      setBridging(false);
+    }
+  }
 
   async function handleSave() {
     if (!title.trim() || !contactId || !stageId) {
@@ -414,6 +442,39 @@ export function DealForm({
                     className="w-full text-muted hover:text-foreground"
                   >
                     Reopen deal
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* CRM bridge */}
+            {deal && (
+              <div className="rounded-lg border border-border bg-surface p-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
+                  CRM Link
+                </p>
+                {crmDealId != null ? (
+                  <Link
+                    href={`/deals/${crmDealId}`}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-accent/20 px-3 py-1.5 text-sm text-accent hover:bg-accent/30"
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    CRM Deal #{crmDealId}
+                  </Link>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleBridge}
+                    disabled={bridging}
+                    className="w-full border border-border bg-transparent text-foreground hover:bg-surface-light"
+                    variant="outline"
+                  >
+                    {bridging ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Link2 className="mr-2 h-4 w-4" />
+                    )}
+                    {bridging ? "Linking…" : "Link to CRM"}
                   </Button>
                 )}
               </div>

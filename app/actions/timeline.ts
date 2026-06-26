@@ -133,10 +133,40 @@ export async function getContactTimeline(
 
         const contact = await prisma.contact.findUnique({
             where: { id: contactId },
-            select: { id: true, name: true, notes: true, updatedAt: true },
+            select: { id: true, name: true, notes: true, updatedAt: true, phone: true },
         })
         if (!contact) {
             return { success: false, error: `Contact ${contactId} not found` }
+        }
+
+        // ── Resolve WaContact by phone (exact or with 91-prefix normalisation) ──
+        let waContactId: string | null = null
+        if (contact.phone) {
+            const phone = contact.phone.trim()
+
+            // 1. Exact match.
+            const waExact = await prisma.waContact.findFirst({ where: { phone } })
+            if (waExact) {
+                waContactId = waExact.id
+            } else {
+                // 2. Try prepending country code 91 to the last 10 digits.
+                const last10 = phone.replace(/\D/g, '').slice(-10)
+                const waWith91 = await prisma.waContact.findFirst({
+                    where: { phone: '91' + last10 },
+                })
+                if (waWith91) {
+                    waContactId = waWith91.id
+                } else if (/^91\d{10}$/.test(phone.replace(/\D/g, ''))) {
+                    // 3. Try stripping the leading 91 from a 12-digit number.
+                    const stripped = phone.replace(/\D/g, '').slice(2)
+                    const waStripped = await prisma.waContact.findFirst({
+                        where: { phone: stripped },
+                    })
+                    if (waStripped) {
+                        waContactId = waStripped.id
+                    }
+                }
+            }
         }
 
         // Fetch only the sources needed for the active filter (Req 14.1, 14.4).
@@ -148,6 +178,7 @@ export async function getContactTimeline(
             payments,
             documents,
             dealActivities,
+            waMessages,
         ] = await Promise.all([
             wants(types, 'call')
                 ? prisma.callLog.findMany({ where: { contactId } })
@@ -181,6 +212,17 @@ export async function getContactTimeline(
             wants(types, 'deal_stage') || wants(types, 'note')
                 ? prisma.dealActivity.findMany({
                     where: { deal: { contactId } },
+                })
+                : Promise.resolve([]),
+            wants(types, 'message') && waContactId != null
+                ? prisma.waMessage.findMany({
+                    where: {
+                        conversation: { contact_id: waContactId },
+                        content_type: { not: 'template' },
+                    },
+                    include: { conversation: { select: { id: true } } },
+                    orderBy: { created_at: 'desc' },
+                    take: 100,
                 })
                 : Promise.resolve([]),
         ])
@@ -298,6 +340,25 @@ export async function getContactTimeline(
             },
         }))
 
+        // ── Map WaMessage rows into TimelineEntry ──
+        const waMessageEntries: TimelineEntry[] = waMessages.map((m): TimelineEntry => ({
+            id: `wa_message:${m.id}`,
+            type: 'message' as const,
+            timestamp: m.created_at.getTime(),
+            description: m.sender_type === 'customer'
+                ? `WhatsApp: ${m.content_text ?? '[media]'}`
+                : `WhatsApp reply: ${m.content_text ?? (m.template_name ? `[template: ${m.template_name}]` : '[media]')}`,
+            performedBy: m.sender_type === 'customer' ? null : 'Agent/Bot',
+            metadata: {
+                channel: 'WhatsApp',
+                senderType: m.sender_type,
+                contentType: m.content_type,
+                messageId: m.message_id,
+                status: m.status,
+                conversationId: m.conversation_id,
+            },
+        }))
+
         // DealActivity rows split into deal-stage changes vs notes (Req 14.1).
         const dealStageEntries: TimelineEntry[] = []
         const dealNoteEntries: TimelineEntry[] = []
@@ -339,6 +400,7 @@ export async function getContactTimeline(
         const merged = mergeTimeline([
             callEntries,
             messageEntries,
+            waMessageEntries,
             emailEntries,
             visitEntries,
             paymentEntries,

@@ -1254,6 +1254,7 @@ model WaDeal {
   notes               String?
   expected_close_date DateTime?
   status              String   @default("open")
+  crm_deal_id         Int?     // FK-free plain Int reference to CRM Deal
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 

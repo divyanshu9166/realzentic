@@ -168,6 +168,7 @@ export interface Deal {
   notes?: string;
   expected_close_date?: string;
   status?: DealStatus;
+  crm_deal_id?: number | null;
   created_at: string;
   updated_at?: string;
   contact?: Contact;

@@ -13,6 +13,7 @@ import {
   sendProductInfoMessage,
   sendAddressMessage,
 } from '@/lib/whatsapp/inquiry-message'
+import { autoQualifyLeadFromWhatsApp } from '@/app/actions/lead-qualification'
 import {
   getBotState,
   startAppointmentBot,
@@ -623,6 +624,12 @@ async function processMessage(
       conversationId: conversation.id,
       incomingMessageId: message.id,
     }).catch((err) => console.error('[webhook] sendInquiryWelcomeMessage failed:', err))
+
+    // Auto-qualify the lead from their first message (fire-and-forget)
+    if (inboundText) {
+      autoQualifyLeadFromWhatsApp(contactRecord.id, inboundText)
+        .catch((err) => console.error('[webhook] lead qualification failed:', err))
+    }
   }
 
   // Update conversation and capture the result for the publish event

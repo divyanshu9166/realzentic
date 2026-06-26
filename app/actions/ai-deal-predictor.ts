@@ -31,6 +31,7 @@ import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { computeDealScore, isHotDeal, isAtRiskDeal } from '@/lib/deal-score'
 import { deriveScoreInputs, parseBudget, type RawDealData } from '@/lib/deal-signals'
+import { engineSendText } from '@/lib/automations/meta-send'
 
 const DEALS_PATH = '/deals'
 
@@ -262,6 +263,77 @@ async function triggerAutoNurture(dealId: number, score: number): Promise<void> 
             },
         }),
     ])
+
+    // Auto-send a WhatsApp nurture message to the buyer (best-effort)
+    await sendAtRiskNurtureWhatsApp(dealId, score)
+}
+
+/**
+ * Best-effort: send a WhatsApp nurture message to the buyer of an at-risk deal.
+ *
+ * All errors are swallowed so this never blocks or fails the scoring flow.
+ */
+async function sendAtRiskNurtureWhatsApp(dealId: number, score: number): Promise<void> {
+    try {
+        // 1. Load the deal → contact → phone
+        const deal = await prisma.deal.findUnique({
+            where: { id: dealId },
+            select: {
+                value: true,
+                contact: { select: { name: true, phone: true } },
+                unit: {
+                    select: {
+                        unitNumber: true,
+                        type: true,
+                        tower: { select: { project: { select: { name: true } } } },
+                    },
+                },
+            },
+        })
+        if (!deal?.contact?.phone) return
+
+        const phone = deal.contact.phone.replace(/\D/g, '').slice(-10)
+        if (phone.length < 10) return
+
+        // 2. Find the WaContact by phone variants (10-digit, with 91 prefix, with +91 prefix)
+        const phoneVariants = [phone, `91${phone}`, `+91${phone}`]
+        const waContact = await prisma.waContact.findFirst({
+            where: { phone: { in: phoneVariants } },
+            select: { id: true, user_id: true },
+        })
+        if (!waContact) return
+
+        // 3. Find the linked conversation
+        const conv = await prisma.waConversation.findFirst({
+            where: { user_id: waContact.user_id, contact_id: waContact.id },
+            select: { id: true },
+        })
+        if (!conv) return
+
+        // 4. Build the nurture message
+        const buyerName = deal.contact.name ?? 'there'
+        const projectName = deal.unit?.tower?.project?.name ?? 'the property'
+        const unitDesc = deal.unit
+            ? `${deal.unit.type.replace('BHK', ' BHK')} unit ${deal.unit.unitNumber}`
+            : 'the unit'
+        const message =
+            `Hi ${buyerName}! 👋 We noticed you were interested in ${unitDesc} at ${projectName}. ` +
+            `We have some exciting updates and would love to connect. ` +
+            `Please let us know a good time to speak! 🏠`
+
+        // 5. Send via the automation engine sender
+        await engineSendText({
+            userId: waContact.user_id,
+            conversationId: conv.id,
+            contactId: waContact.id,
+            text: message,
+        })
+
+        console.log(`[at-risk] nurture WhatsApp sent for deal ${dealId}`)
+    } catch (err) {
+        // Best-effort — never block the scoring flow
+        console.error('[at-risk] WhatsApp nurture failed:', err)
+    }
 }
 
 /**
