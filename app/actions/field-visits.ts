@@ -257,6 +257,7 @@ export async function createFieldVisit(data: {
   scheduledDate?: string
   scheduledTime?: string
   notes?: string
+  buyerPhone?: string
 }) {
   try {
     const count = await prisma.fieldVisit.count()
@@ -275,6 +276,7 @@ export async function createFieldVisit(data: {
         scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
         scheduledTime: data.scheduledTime || null,
         notes: data.notes || null,
+        buyerPhone: data.buyerPhone?.trim() || null,
         photoUrls: [],
       },
     })

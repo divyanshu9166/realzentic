@@ -24,6 +24,7 @@ import { sendTextMessage as sendSocialMessage, setTypingOn } from '@/lib/social/
 import { embedText } from './embedder'
 import { retrieveChunks } from './retriever'
 import { generateResponse } from './responder'
+import { maybeCreateFollowUpFromMessage } from '@/lib/follow-up-auto'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -85,6 +86,19 @@ export async function processAiAgentJob(payload: AiAgentJobPayload): Promise<voi
   }
 
   const isSocialChannel = channel === 'facebook' || channel === 'instagram'
+
+  // ── Step 1a: Auto follow-up detection (WhatsApp only) ────────────────────
+  // If the customer asks to be contacted later ("call me after 10 days"), create
+  // a pending Follow-up so the reminder engine re-engages them on that date.
+  // WhatsApp only: social channels use a PSID, not a real phone, and are
+  // re-engaged by the chatbot in-conversation per the agreed flow.
+  if (!isSocialChannel) {
+    await maybeCreateFollowUpFromMessage({
+      phone: contactPhone,
+      messageText,
+      source: 'WhatsApp',
+    }).catch((err) => console.warn('[ai-agent] follow-up auto-detect failed:', err))
+  }
 
   // ── Step 1b: Skip if conversation needs a human agent ───────────────────
   let needsHuman = false

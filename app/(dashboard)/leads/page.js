@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, MessageSquare, Instagram, Facebook, Globe, Phone, Mail, ChevronRight, Bot, Clock, Trash2, Store, Building2, AlertCircle, Users } from 'lucide-react';
 import { getLeads, createLead, updateLeadStatus, addFollowUp, findDuplicates, mergeContacts, dedupReport } from '@/app/actions/leads';
+import { convertLeadToFollowUp } from '@/app/actions/follow-ups';
 import { moveLeadToDraft } from '@/app/actions/drafts';
 import Modal from '@/components/Modal';
 import AiMatchPanel from '@/components/AiMatchPanel';
@@ -83,6 +84,11 @@ export default function LeadsPage() {
   const { notify } = useAlertToast();
   const [leadToDraft, setLeadToDraft] = useState(null);
   const [deletingLead, setDeletingLead] = useState(false);
+
+  // Convert-to-follow-up state
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [convertForm, setConvertForm] = useState({ followUpDate: '', reason: '', priority: 'Medium' });
+  const [converting, setConverting] = useState(false);
 
   // Duplicate-detection state (Req 11.2, 11.5)
   const [duplicateMatches, setDuplicateMatches] = useState([]);
@@ -278,6 +284,30 @@ export default function LeadsPage() {
         const fresh = updated.data.find(l => l.id === selectedLead.id);
         if (fresh) setSelectedLead(fresh);
       }
+    }
+  };
+
+  const handleConvertToFollowUp = async () => {
+    if (!selectedLead || !convertForm.followUpDate) {
+      notify('Please pick a follow-up date', { variant: 'danger' });
+      return;
+    }
+    setConverting(true);
+    const res = await convertLeadToFollowUp({
+      leadId: selectedLead.id,
+      followUpDate: convertForm.followUpDate,
+      reason: convertForm.reason || undefined,
+      priority: convertForm.priority || undefined,
+    });
+    setConverting(false);
+    if (res.success) {
+      setShowConvertModal(false);
+      setConvertForm({ followUpDate: '', reason: '', priority: 'Medium' });
+      setSelectedLead(null);
+      await refresh();
+      notify('Lead converted to a follow-up', { variant: 'success' });
+    } else {
+      notify(res.error || 'Failed to convert lead', { variant: 'danger' });
     }
   };
 
@@ -526,6 +556,57 @@ export default function LeadsPage() {
         )}
       </Modal>
 
+      {/* Convert to Follow-up Modal */}
+      <Modal isOpen={showConvertModal} onClose={() => setShowConvertModal(false)} title="Convert to Follow-up" size="md">
+        {selectedLead && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">
+              Schedule a future date to reconnect with <strong className="text-foreground">{selectedLead.name}</strong>.
+              The lead is kept and linked, so nothing is lost.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1.5">Follow-up Date *</label>
+                <input
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  value={convertForm.followUpDate}
+                  onChange={(e) => setConvertForm((p) => ({ ...p, followUpDate: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-surface rounded-xl border border-border text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1.5">Priority</label>
+                <select
+                  value={convertForm.priority}
+                  onChange={(e) => setConvertForm((p) => ({ ...p, priority: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-surface rounded-xl border border-border text-sm"
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1.5">Reason / When are they buying?</label>
+              <input
+                value={convertForm.reason}
+                onChange={(e) => setConvertForm((p) => ({ ...p, reason: e.target.value }))}
+                placeholder="e.g. Will decide after 2 months / after selling current home"
+                className="w-full px-3 py-2.5 bg-surface rounded-xl border border-border text-sm"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowConvertModal(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-surface-hover">Cancel</button>
+              <button onClick={handleConvertToFollowUp} disabled={converting} className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold disabled:opacity-50">
+                {converting ? 'Converting...' : 'Create Follow-up'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Lead Detail Modal */}
       <Modal isOpen={!!selectedLead} onClose={() => { setSelectedLead(null); setShowFollowUpForm(false); }} title="Lead Details" size="lg">
         {selectedLead && (
@@ -553,6 +634,13 @@ export default function LeadsPage() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface border border-border text-muted hover:text-foreground hover:border-emerald-500/30"
                   >
                     <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setConvertForm({ followUpDate: '', reason: '', priority: 'Medium' }); setShowConvertModal(true); }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-light text-purple border border-purple/20 hover:bg-purple/20"
+                  >
+                    <Clock className="w-3.5 h-3.5" /> Convert to Follow-up
                   </button>
                 </div>
               </div>

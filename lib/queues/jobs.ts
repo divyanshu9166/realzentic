@@ -54,16 +54,17 @@ export const QUEUE_AUTOMATION = 'automation-queue'
 export const QUEUE_BROADCAST_STATUS = 'broadcast-status-queue'
 export const QUEUE_MESSAGE_DELIVERY = 'message-delivery-queue'
 export const QUEUE_AI_AGENT = 'wa-ai-agent'
+export const QUEUE_REMINDERS = 'reminders-queue'
 
 // ── Typed job data shapes ──────────────────────────────────────────────────
 
 export interface AutomationJobData {
   userId: string
   triggerType:
-    | 'new_contact_created'
-    | 'first_inbound_message'
-    | 'new_message_received'
-    | 'keyword_match'
+  | 'new_contact_created'
+  | 'first_inbound_message'
+  | 'new_message_received'
+  | 'keyword_match'
   contactId: string
   context: {
     message_text?: string
@@ -169,6 +170,25 @@ export function getAiAgentQueue() {
   return _aiAgentQueue
 }
 
+// Reminders queue — drives the once-daily WhatsApp reminder sweep via a
+// repeatable (cron) scheduler. Idle cost is ~zero: BullMQ sleeps until the
+// next scheduled time rather than polling.
+let _remindersQueue: Queue | undefined
+export function getRemindersQueue() {
+  if (!_remindersQueue) {
+    _remindersQueue = new Queue(QUEUE_REMINDERS, {
+      connection,
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'fixed', delay: 30_000 },
+        removeOnComplete: { count: 30 },
+        removeOnFail: { count: 60 },
+      },
+    })
+  }
+  return _remindersQueue
+}
+
 // ── Worker factory ─────────────────────────────────────────────────────────
 // Workers are created lazily so importing this module in the Next.js
 // process (which runs in both server and edge contexts) doesn't accidentally
@@ -208,5 +228,13 @@ export function createAiAgentWorker(
   return new Worker<AiAgentJobData>(QUEUE_AI_AGENT, handler, {
     connection,
     concurrency: 2,
+  })
+}
+
+export function createRemindersWorker(handler: WorkerHandler<unknown>): Worker {
+  // concurrency = 1 — a single daily sweep; no need for parallelism.
+  return new Worker(QUEUE_REMINDERS, handler, {
+    connection,
+    concurrency: 1,
   })
 }

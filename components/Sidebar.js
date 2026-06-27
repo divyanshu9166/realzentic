@@ -38,6 +38,8 @@ import {
   Landmark,
   Scale,
   Navigation,
+  CalendarClock,
+  MessageSquareDot,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSession } from '@/components/AuthProvider';
@@ -51,6 +53,7 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/walkins', label: 'Walk-ins', icon: UserPlus },
   { href: '/leads', label: 'Leads', icon: Users },
+  { href: '/follow-ups', label: 'Follow-ups', icon: CalendarClock },
   { href: '/contacts', label: 'Contacts', icon: Contact },
   { href: '/properties', label: 'Properties', icon: Building },
   { href: '/deals', label: 'Deals', icon: Briefcase },
@@ -72,6 +75,7 @@ const navItems = [
   { href: '/drafts', label: 'Drafts', icon: Trash2, roles: ['ADMIN', 'MANAGER'] },
   { href: '/email-marketing', label: 'Email Marketing', icon: MailPlus, roles: ['ADMIN', 'MANAGER'] },
   { href: '/whatsapp-marketing', label: 'WhatsApp Marketing', icon: Megaphone, roles: ['ADMIN', 'MANAGER'] },
+  { href: '/whatsapp-reminders', label: 'WhatsApp Reminders', icon: MessageSquareDot, roles: ['ADMIN', 'MANAGER'] },
   { href: '/social-inbox', label: 'Instagram & FB Inbox', icon: MessageSquare, roles: ['ADMIN', 'MANAGER'] },
   { href: '/calls', label: 'Call Center', icon: Headphones },
   { href: '/expenses', label: 'Expenses', icon: Calculator, roles: ['ADMIN', 'MANAGER', 'STAFF'] },

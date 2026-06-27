@@ -110,6 +110,7 @@ model Contact {
   signatures          DocumentSignature[]
   waitlists           UnitWaitlist[]
   snagReports         SnagReport[]
+  followUpEntries     FollowUpEntry[]
 
   @@index([email])
   @@index([emailSubscribed])
@@ -147,6 +148,7 @@ model Lead {
   // Real Estate CRM back-relations (additive)
   cpLead     CPLead?
   portalLead PortalLead?
+  followUpEntries FollowUpEntry[]
 
   @@index([status])
   @@index([date])
@@ -163,6 +165,46 @@ model FollowUp {
   date    DateTime
 
   @@index([leadId])
+}
+
+// ─── FOLLOW-UPS (interested prospects with a future callback date) ─────
+// A first-class follow-up: a contact who is interested but not ready to buy
+// yet and has given a future date to reconnect (e.g. "after 1-2 months").
+// Created manually or by converting an existing Lead.
+
+enum FollowUpStatus {
+  PENDING // scheduled, not yet actioned
+  CONTACTED // reached out, still nurturing
+  REMINDED // automated reminder template sent — awaiting the contact's reply
+  CONVERTED // turned into a deal / customer
+  LOST // no longer interested
+}
+
+model FollowUpEntry {
+  id            Int            @id @default(autoincrement())
+  contactId     Int
+  contact       Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  // Set when this follow-up was created by converting a Lead.
+  leadId        Int?
+  lead          Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  interest      String // what the prospect is interested in (property/config)
+  budget        String?
+  followUpDate  DateTime // the future date to reconnect (KEY field)
+  reason        String? // why following up / prospect's note ("buying after 2 months")
+  status        FollowUpStatus @default(PENDING)
+  priority      String         @default("Medium") // Low | Medium | High
+  source        String?
+  notes         String?
+  assignedToId  Int?
+  assignedTo    Staff?         @relation(fields: [assignedToId], references: [id])
+  lastContactedAt DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status])
+  @@index([followUpDate])
+  @@index([contactId])
+  @@index([assignedToId])
 }
 
 // ─── APPOINTMENTS ────────────────────────────────────
@@ -266,6 +308,7 @@ model Staff {
   agentTargets AgentTarget[]
   snagReports SnagReport[]
   agentLocations AgentLocation[]
+  followUpEntries FollowUpEntry[]
 
   @@index([email])
 }
@@ -336,6 +379,7 @@ model FieldVisit {
   // Site Visit 2.0 extensions (Req 12.1) — additive
   projectId        Int?
   unitIds          Int[]
+  buyerPhone       String? // buyer contact number, for reminders / OTP
   geoCheckinLat    Float?
   geoCheckinLng    Float?
   geoCheckinTime   DateTime?
@@ -2385,6 +2429,46 @@ model AgentLocation {
   @@index([staffId])
   @@index([recordedAt])
   @@index([staffId, recordedAt])
+}
+
+// ─── WHATSAPP CRM REMINDERS ───────────────────────────
+// Singleton config for proactive, 24h-window-aware WhatsApp reminders, plus a
+// per-day idempotency log so a daily cron never double-sends.
+
+model WaReminderConfig {
+  id                    Int      @id @default(1) // singleton row
+  // Follow-up due reminders
+  followUpEnabled       Boolean  @default(false)
+  followUpTemplate      String? // approved Meta template for the prospect nudge
+  notifyAgentOnFollowUp Boolean  @default(true)
+  agentFollowUpTemplate String? // approved template used to ping the agent
+  // Site-visit reminders
+  siteVisitEnabled      Boolean  @default(false)
+  siteVisitTemplate     String?
+  siteVisitLeadHours    Int      @default(24)
+  // Post-visit feedback request
+  postVisitEnabled      Boolean  @default(false)
+  postVisitTemplate     String?
+  // Payment / milestone due reminders
+  paymentEnabled        Boolean  @default(false)
+  paymentTemplate       String?
+  paymentLeadDays       Int      @default(3)
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+}
+
+model ReminderLog {
+  id        Int      @id @default(autoincrement())
+  kind      String // 'follow_up' | 'site_visit' | 'post_visit' | 'payment'
+  refId     Int // the source entity id
+  sentOn    String // 'YYYY-MM-DD' bucket (idempotency key)
+  channel   String? // 'text' | 'template' | 'skipped'
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@unique([kind, refId, sentOn])
+  @@index([kind])
+  @@index([createdAt])
 }
 
 // ─── SNAG / DEFECT MANAGEMENT ─────────────────────────
