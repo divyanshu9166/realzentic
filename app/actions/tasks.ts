@@ -11,6 +11,7 @@
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { createTaskSchema, updateTaskSchema, setTaskStatusSchema } from '@/lib/validations/tasks'
+import { nextDueDate, isRecurrence } from '@/lib/task-recurrence'
 
 type Result<T> = { success: true; data: T } | { success: false; error: string }
 
@@ -25,6 +26,7 @@ export interface TaskRow {
     status: string
     dueDate: string
     completedAt: string | null
+    recurrence: string
     assignedToId: number | null
     assignedToName: string | null
     contactId: number | null
@@ -42,6 +44,7 @@ function mapTask(t: {
     status: string
     dueDate: Date
     completedAt: Date | null
+    recurrence?: string
     assignedToId: number | null
     assignedTo: { name: string } | null
     contactId: number | null
@@ -57,6 +60,7 @@ function mapTask(t: {
         status: t.status,
         dueDate: t.dueDate.toISOString(),
         completedAt: t.completedAt ? t.completedAt.toISOString() : null,
+        recurrence: t.recurrence ?? 'none',
         assignedToId: t.assignedToId,
         assignedToName: t.assignedTo?.name ?? null,
         contactId: t.contactId,
@@ -120,6 +124,7 @@ export async function createTask(data: unknown): Promise<Result<TaskRow>> {
             priority: d.priority,
             status: 'Open',
             dueDate: due,
+            recurrence: d.recurrence ?? 'none',
             assignedToId: d.assignedToId ?? null,
             contactId: d.contactId ?? null,
             dealId: d.dealId ?? null,
@@ -166,6 +171,29 @@ export async function setTaskStatus(data: unknown): Promise<Result<TaskRow>> {
             },
             include: taskInclude,
         })
+
+        // Recurring tasks: when completed, spawn the next occurrence so the
+        // cadence continues without manual re-entry.
+        if (parsed.data.status === 'Done' && isRecurrence(task.recurrence) && task.recurrence !== 'none') {
+            const next = nextDueDate(task.dueDate, task.recurrence)
+            if (next) {
+                await prisma.task.create({
+                    data: {
+                        title: task.title,
+                        description: task.description,
+                        type: task.type,
+                        priority: task.priority,
+                        status: 'Open',
+                        dueDate: next,
+                        recurrence: task.recurrence,
+                        assignedToId: task.assignedToId,
+                        contactId: task.contactId,
+                        dealId: task.dealId,
+                    },
+                }).catch((err) => console.warn('[tasks] failed to spawn next recurrence:', err))
+            }
+        }
+
         revalidatePath(TASKS_PATH)
         return { success: true, data: mapTask(task) }
     } catch {

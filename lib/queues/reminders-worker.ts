@@ -22,6 +22,7 @@ import {
     runSiteVisitReminders,
     runPostVisitFeedback,
     runPaymentReminders,
+    runTaskReminders,
 } from '@/app/actions/reminders'
 
 const SCHEDULER_ID = 'daily-whatsapp-reminders'
@@ -39,9 +40,10 @@ export async function startRemindersWorker(): Promise<void> {
         const siteVisits = await runSiteVisitReminders()
         const postVisits = await runPostVisitFeedback()
         const payments = await runPaymentReminders()
+        const tasks = await runTaskReminders()
         console.log(
             '[reminders-worker] sweep complete',
-            JSON.stringify({ followUps, siteVisits, postVisits, payments }),
+            JSON.stringify({ followUps, siteVisits, postVisits, payments, tasks }),
         )
     })
 

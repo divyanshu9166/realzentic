@@ -2297,6 +2297,7 @@ model Task {
   status       String    @default("Open")      // Open | Done | Cancelled
   dueDate      DateTime
   completedAt  DateTime?
+  recurrence   String    @default("none") // none | daily | weekly | monthly
   assignedToId Int?
   assignedTo   Staff?    @relation(fields: [assignedToId], references: [id])
   contactId    Int?
@@ -2453,6 +2454,9 @@ model WaReminderConfig {
   paymentEnabled        Boolean  @default(false)
   paymentTemplate       String?
   paymentLeadDays       Int      @default(3)
+  // Task due reminders (notify the assigned agent)
+  taskEnabled           Boolean  @default(false)
+  taskTemplate          String?
   updatedAt             DateTime @updatedAt
   createdAt             DateTime @default(now())
 }

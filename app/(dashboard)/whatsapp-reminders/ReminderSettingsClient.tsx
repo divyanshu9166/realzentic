@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-    CalendarClock, MapPin, Star, Banknote, Save, Play, Loader2, Info, CheckCircle2, AlertTriangle,
+    CalendarClock, MapPin, Star, Banknote, Save, Play, Loader2, Info, CheckCircle2, AlertTriangle, CheckSquare,
 } from 'lucide-react';
 import {
     getReminderConfig, saveReminderConfig, runRemindersNow, type ReminderConfigView,
@@ -12,7 +12,7 @@ import { useAlertToast } from '@/components/AlertToastProvider';
 type RunResult =
     | { success: true; considered: number; sent: number; skipped: number; failed: number }
     | { success: false; error: string };
-type LastRun = { followUps: RunResult; siteVisits: RunResult; postVisits: RunResult; payments: RunResult };
+type LastRun = { followUps: RunResult; siteVisits: RunResult; postVisits: RunResult; payments: RunResult; tasks: RunResult };
 
 const sentOf = (r: RunResult) => (r.success ? r.sent : 0);
 
@@ -49,7 +49,7 @@ export default function ReminderSettingsClient() {
             setLastRun(res.data as LastRun);
             const total =
                 sentOf(res.data.followUps) + sentOf(res.data.siteVisits) +
-                sentOf(res.data.postVisits) + sentOf(res.data.payments);
+                sentOf(res.data.postVisits) + sentOf(res.data.payments) + sentOf(res.data.tasks);
             notify(`Reminders run complete — ${total} sent`);
         } else {
             notify(res.error || 'Failed to run reminders');
@@ -131,6 +131,17 @@ export default function ReminderSettingsClient() {
                 <NumberField label="Send this many days before due date" value={cfg.paymentLeadDays} min={1} max={60} onChange={(v) => set({ paymentLeadDays: v })} />
             </SectionCard>
 
+            {/* Task reminders */}
+            <SectionCard
+                icon={CheckSquare}
+                title="Task reminders (to agents)"
+                desc="Remind the assigned agent on WhatsApp when their task is due."
+                enabled={cfg.taskEnabled}
+                onToggle={(v) => set({ taskEnabled: v })}
+            >
+                <TemplateField label="Task template name" value={cfg.taskTemplate} onChange={(v) => set({ taskTemplate: v })} hint="Body vars: {{1}} agent, {{2}} task title, {{3}} due date" />
+            </SectionCard>
+
             {/* Actions */}
             <div className="flex items-center justify-between gap-3 flex-wrap sticky bottom-0 bg-background/80 backdrop-blur py-3">
                 <button onClick={handleRunNow} disabled={running}
@@ -146,11 +157,12 @@ export default function ReminderSettingsClient() {
             {lastRun && (
                 <div className="glass-card p-4">
                     <p className="text-sm font-semibold text-foreground mb-3">Last run</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         <RunStat label="Follow-ups" r={lastRun.followUps} />
                         <RunStat label="Site visits" r={lastRun.siteVisits} />
                         <RunStat label="Feedback" r={lastRun.postVisits} />
                         <RunStat label="Payments" r={lastRun.payments} />
+                        <RunStat label="Tasks" r={lastRun.tasks} />
                     </div>
                 </div>
             )}

@@ -22,9 +22,11 @@ import {
     ExternalLink,
 } from 'lucide-react';
 import { getDealDetail } from '@/app/actions/deals';
+import { getStaff } from '@/app/actions/staff';
 import AiMatchPanel from '@/components/AiMatchPanel';
 import MilestoneTracker, { type MilestoneView } from './MilestoneTracker';
 import SnagPanel from './SnagPanel';
+import DealActions from './DealActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +107,16 @@ export default async function DealDetailPage({
 
     const { deal, timeline, documents, milestones, costSheet } = res.data;
 
+    // Staff list for the inline-edit agent dropdown.
+    const staffRes = await getStaff();
+    const agents = staffRes.success
+        ? (staffRes.data as Array<{ id: number; name: string }>).map((s) => ({ id: s.id, name: s.name }))
+        : [];
+
+    const expectedCloseInput = deal.expectedCloseDate
+        ? new Date(deal.expectedCloseDate).toISOString().slice(0, 10)
+        : '';
+
     // Serialize milestones (Decimal -> number, Date -> Date) for the client tracker.
     const milestoneViews: MilestoneView[] = milestones.map((m) => ({
         id: m.id,
@@ -171,6 +183,19 @@ export default async function DealDetailPage({
                         {typeof deal.aiScore === 'number' && (
                             <p className="mt-1 text-xs text-muted">AI score: {deal.aiScore}</p>
                         )}
+                        <div className="mt-3 flex justify-end">
+                            <DealActions
+                                deal={{
+                                    id: deal.id,
+                                    value: num(deal.value),
+                                    expectedCloseDate: expectedCloseInput,
+                                    source: deal.source ?? null,
+                                    assignedAgentId: deal.assignedAgentId ?? null,
+                                    notes: deal.notes ?? null,
+                                }}
+                                agents={agents}
+                            />
+                        </div>
                     </div>
                 </div>
                 {deal.lostReason && (

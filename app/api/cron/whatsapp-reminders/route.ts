@@ -18,6 +18,7 @@ import {
     runSiteVisitReminders,
     runPostVisitFeedback,
     runPaymentReminders,
+    runTaskReminders,
 } from '@/app/actions/reminders'
 
 function isAuthorized(req: NextRequest): boolean {
@@ -38,8 +39,9 @@ export async function GET(req: NextRequest) {
         const siteVisits = await runSiteVisitReminders()
         const postVisits = await runPostVisitFeedback()
         const payments = await runPaymentReminders()
+        const tasks = await runTaskReminders()
 
-        const summary = { followUps, siteVisits, postVisits, payments }
+        const summary = { followUps, siteVisits, postVisits, payments, tasks }
         console.log('[cron/whatsapp-reminders]', JSON.stringify(summary))
         return NextResponse.json({ success: true, summary })
     } catch (err) {

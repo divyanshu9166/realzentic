@@ -1267,3 +1267,122 @@ export async function seedDefaultDealStages() {
     revalidatePath(DEALS_PATH)
     return { success: true as const, data: { created: defaults.length } }
 }
+
+// ─── Deal inline-edit + manual activity logging ─────────────────────────────
+
+/**
+ * Update editable fields of a deal (value, expected close, source, assigned
+ * agent, notes) and write an audit note. Does not change stage — stage moves
+ * go through `moveDeal` so the stage-transition rules (Req 4.9) always apply.
+ */
+export async function updateDeal(
+    id: number,
+    data: {
+        value?: number
+        expectedCloseDate?: string | null
+        source?: string | null
+        assignedAgentId?: number | null
+        notes?: string | null
+    },
+) {
+    if (!Number.isInteger(id) || id < 1) return { success: false as const, error: 'Invalid deal id' }
+
+    const deal = await prisma.deal.findUnique({ where: { id }, select: { id: true } })
+    if (!deal) return { success: false as const, error: 'Deal not found' }
+
+    const update: Record<string, unknown> = {}
+    const changes: string[] = []
+
+    if (data.value !== undefined) {
+        if (!Number.isFinite(data.value) || data.value < 0) {
+            return { success: false as const, error: 'Deal value must be a non-negative number' }
+        }
+        update.value = new Prisma.Decimal(data.value)
+        changes.push('value')
+    }
+    if (data.expectedCloseDate !== undefined) {
+        if (data.expectedCloseDate) {
+            const d = new Date(data.expectedCloseDate)
+            if (Number.isNaN(d.getTime())) return { success: false as const, error: 'Invalid expected close date' }
+            update.expectedCloseDate = d
+        } else {
+            update.expectedCloseDate = null
+        }
+        changes.push('expected close')
+    }
+    if (data.source !== undefined) { update.source = data.source?.trim() || null; changes.push('source') }
+    if (data.notes !== undefined) { update.notes = data.notes?.trim() || null; changes.push('notes') }
+    if (data.assignedAgentId !== undefined) {
+        if (data.assignedAgentId != null) {
+            const staff = await prisma.staff.findUnique({ where: { id: data.assignedAgentId }, select: { id: true } })
+            if (!staff) return { success: false as const, error: 'Assigned agent not found' }
+            update.assignedAgentId = data.assignedAgentId
+        } else {
+            update.assignedAgentId = null
+        }
+        changes.push('assigned agent')
+    }
+
+    if (Object.keys(update).length === 0) {
+        return { success: false as const, error: 'No changes to save' }
+    }
+
+    try {
+        const performedById = await resolvePerformedById()
+        await prisma.$transaction([
+            prisma.deal.update({ where: { id }, data: update }),
+            prisma.dealActivity.create({
+                data: {
+                    dealId: id,
+                    type: 'UPDATE',
+                    description: `Deal updated (${changes.join(', ')})`,
+                    performedById,
+                },
+            }),
+        ])
+        revalidatePath(DEALS_PATH)
+        revalidatePath(`/deals/${id}`)
+        return { success: true as const }
+    } catch (error) {
+        console.error('Error updating deal:', error)
+        return { success: false as const, error: 'Failed to update deal' }
+    }
+}
+
+const DEAL_ACTIVITY_TYPES = ['note', 'call', 'email', 'visit', 'meeting'] as const
+
+/**
+ * Manually log an activity (note / call / email / visit / meeting) against a
+ * deal's timeline.
+ */
+export async function addDealActivity(input: {
+    dealId: number
+    type: string
+    description: string
+}) {
+    const dealId = Number(input?.dealId)
+    if (!Number.isInteger(dealId) || dealId < 1) return { success: false as const, error: 'Invalid deal id' }
+
+    const type = String(input?.type || '').toLowerCase()
+    if (!(DEAL_ACTIVITY_TYPES as readonly string[]).includes(type)) {
+        return { success: false as const, error: 'Invalid activity type' }
+    }
+    const description = String(input?.description || '').trim()
+    if (!description) return { success: false as const, error: 'A description is required' }
+    if (description.length > 2000) return { success: false as const, error: 'Description is too long' }
+
+    const deal = await prisma.deal.findUnique({ where: { id: dealId }, select: { id: true } })
+    if (!deal) return { success: false as const, error: 'Deal not found' }
+
+    try {
+        const performedById = await resolvePerformedById()
+        await prisma.dealActivity.create({
+            data: { dealId, type, description, performedById },
+        })
+        revalidatePath(`/deals/${dealId}`)
+        return { success: true as const }
+    } catch (error) {
+        console.error('Error logging deal activity:', error)
+        return { success: false as const, error: 'Failed to log activity' }
+    }
+}

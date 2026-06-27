@@ -38,6 +38,8 @@ export interface ReminderConfigView {
     paymentEnabled: boolean
     paymentTemplate: string | null
     paymentLeadDays: number
+    taskEnabled: boolean
+    taskTemplate: string | null
 }
 
 const DEFAULT_CONFIG: ReminderConfigView = {
@@ -53,6 +55,8 @@ const DEFAULT_CONFIG: ReminderConfigView = {
     paymentEnabled: false,
     paymentTemplate: null,
     paymentLeadDays: 3,
+    taskEnabled: false,
+    taskTemplate: null,
 }
 
 async function loadConfig(): Promise<ReminderConfigView> {
@@ -71,6 +75,8 @@ async function loadConfig(): Promise<ReminderConfigView> {
         paymentEnabled: row.paymentEnabled,
         paymentTemplate: row.paymentTemplate,
         paymentLeadDays: row.paymentLeadDays,
+        taskEnabled: row.taskEnabled,
+        taskTemplate: row.taskTemplate,
     }
 }
 
@@ -103,6 +109,8 @@ export async function saveReminderConfig(input: Partial<ReminderConfigView>) {
         paymentEnabled: Boolean(input.paymentEnabled),
         paymentTemplate: input.paymentTemplate?.trim() || null,
         paymentLeadDays: clampInt(input.paymentLeadDays, 1, 60, 3),
+        taskEnabled: Boolean(input.taskEnabled),
+        taskTemplate: input.taskTemplate?.trim() || null,
     }
 
     try {
@@ -126,7 +134,7 @@ function clampInt(v: unknown, lo: number, hi: number, dflt: number): number {
 
 // ─── Idempotency ─────────────────────────────────────────────────────────────────
 
-type ReminderKind = 'follow_up' | 'site_visit' | 'post_visit' | 'payment'
+type ReminderKind = 'follow_up' | 'site_visit' | 'post_visit' | 'payment' | 'task'
 
 function todayBucket(now = new Date()): string {
     return now.toISOString().split('T')[0]
@@ -367,6 +375,51 @@ export async function runPaymentReminders(): Promise<RunSummary | { success: fal
     return { success: true, considered: milestones.length, sent, skipped, failed }
 }
 
+// ─── 5. Task due reminders (notify the assigned agent) ───────────────────────────────
+
+export async function runTaskReminders(): Promise<RunSummary | { success: false; error: string }> {
+    const cfg = await loadConfig()
+    if (!cfg.taskEnabled) return { success: true, considered: 0, sent: 0, skipped: 0, failed: 0 }
+
+    const sentOn = todayBucket()
+    const endOfToday = new Date()
+    endOfToday.setHours(23, 59, 59, 999)
+
+    const tasks = await prisma.task.findMany({
+        where: {
+            status: 'Open',
+            dueDate: { lte: endOfToday },
+            assignedToId: { not: null },
+        },
+        include: { assignedTo: { select: { name: true, phone: true } } },
+        orderBy: { dueDate: 'asc' },
+        take: 500,
+    })
+
+    let sent = 0
+    let skipped = 0
+    let failed = 0
+
+    for (const t of tasks) {
+        const agent = t.assignedTo
+        if (!agent?.phone) { skipped++; continue }
+        if (await alreadyReminded('task', t.id, sentOn)) { skipped++; continue }
+
+        const due = fmtDate(t.dueDate)
+        const text = `Task reminder: "${t.title}" (${t.type}) is due ${due}. Open Realzentic to action it.`
+        const template: CrmTemplate | undefined = cfg.taskTemplate
+            ? { name: cfg.taskTemplate, params: [agent.name, t.title, due] }
+            : undefined
+
+        const res = await sendCrmWhatsApp({ phone: agent.phone, text, template, contactName: agent.name })
+        if (res.ok) { sent++; await logReminder('task', t.id, sentOn, res.channel) }
+        else if ('skipped' in res) { skipped++; await logReminder('task', t.id, sentOn, 'skipped', res.reason) }
+        else failed++
+    }
+
+    return { success: true, considered: tasks.length, sent, skipped, failed }
+}
+
 // ─── Manual trigger (UI "Run now") ─────────────────────────────────────────────────
 
 /**
@@ -383,5 +436,6 @@ export async function runRemindersNow() {
     const siteVisits = await runSiteVisitReminders()
     const postVisits = await runPostVisitFeedback()
     const payments = await runPaymentReminders()
-    return { success: true as const, data: { followUps, siteVisits, postVisits, payments } }
+    const tasks = await runTaskReminders()
+    return { success: true as const, data: { followUps, siteVisits, postVisits, payments, tasks } }
 }

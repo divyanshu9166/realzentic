@@ -235,12 +235,17 @@ export async function convertLeadToFollowUp(input: unknown) {
         })
         if (!lead) return { success: false as const, error: 'Lead not found' }
 
-        // Guard against duplicating an open follow-up for the same lead.
+        // Guard against duplicating an open follow-up for the same person —
+        // checked by contact (covers both this lead and any auto-created
+        // follow-up from a WhatsApp "call me later" message).
         const existing = await prisma.followUpEntry.findFirst({
-            where: { leadId: d.leadId, status: { in: ['PENDING', 'CONTACTED'] } },
+            where: {
+                contactId: lead.contactId,
+                status: { in: ['PENDING', 'CONTACTED', 'REMINDED'] },
+            },
         })
         if (existing) {
-            return { success: false as const, error: 'This lead already has an open follow-up' }
+            return { success: false as const, error: 'This contact already has an open follow-up' }
         }
 
         const entry = await prisma.$transaction(async (tx) => {

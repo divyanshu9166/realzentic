@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
+import { normalizePhone } from '@/lib/dedup'
 
 export interface BulkContactRow {
   name: string
@@ -52,6 +53,68 @@ export async function bulkImportContacts(rows: BulkContactRow[]) {
   return {
     success: true,
     data: { total: valid.length, created, skipped },
+  }
+}
+
+// ─── CREATE A SINGLE CONTACT (manual add) ────────────────
+// Adds one contact from the Contacts UI, with phone-based de-duplication so a
+// manually-added contact never collides with an existing record.
+
+export interface CreateContactInput {
+  name: string
+  phone: string
+  email?: string
+  source?: string
+  state?: string
+  address?: string
+  notes?: string
+  nriCountry?: string
+  nriCurrency?: string
+}
+
+export async function createContact(input: CreateContactInput) {
+  const name = input?.name?.trim()
+  const phone = input?.phone?.trim()
+  if (!name) return { success: false as const, error: 'Name is required' }
+  if (!phone || phone.replace(/\D/g, '').length < 6) {
+    return { success: false as const, error: 'A valid phone number is required' }
+  }
+
+  try {
+    // De-dup: reject if an existing contact matches by exact or normalized phone.
+    const exact = await prisma.contact.findFirst({ where: { phone } })
+    if (exact) {
+      return { success: false as const, error: 'A contact with this phone number already exists' }
+    }
+    const normalizedTarget = normalizePhone(phone)
+    if (normalizedTarget) {
+      const candidates = await prisma.contact.findMany({ select: { id: true, phone: true } })
+      const dupe = candidates.find((c) => normalizePhone(c.phone) === normalizedTarget)
+      if (dupe) {
+        return { success: false as const, error: 'A contact with this phone number already exists' }
+      }
+    }
+
+    const email = input.email?.trim() || null
+    const contact = await prisma.contact.create({
+      data: {
+        name,
+        phone,
+        email,
+        source: input.source?.trim() || 'Manual',
+        state: input.state?.trim() || null,
+        address: input.address?.trim() || null,
+        notes: input.notes?.trim() || null,
+        nriCountry: input.nriCountry?.trim() || null,
+        nriCurrency: input.nriCountry?.trim() ? (input.nriCurrency?.trim() || 'USD') : null,
+      },
+    })
+
+    revalidatePath('/contacts')
+    return { success: true as const, data: contact }
+  } catch (error) {
+    console.error('Error creating contact:', error)
+    return { success: false as const, error: 'Failed to create contact' }
   }
 }
 

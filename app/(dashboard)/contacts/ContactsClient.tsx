@@ -11,14 +11,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Search, Users, Phone, Mail, ChevronRight, Loader2, Upload, Download, Globe } from 'lucide-react'
-import { getContactsDirectory, bulkImportContacts, type ContactDirectoryRow } from '@/app/actions/contacts'
+import { Search, Users, Phone, Mail, ChevronRight, Loader2, Upload, Download, Globe, Plus, X } from 'lucide-react'
+import { getContactsDirectory, bulkImportContacts, createContact, type ContactDirectoryRow } from '@/app/actions/contacts'
 
 export default function ContactsClient() {
     const [rows, setRows] = useState<ContactDirectoryRow[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [importing, setImporting] = useState(false)
+    const [showAdd, setShowAdd] = useState(false)
+    const [saving, setSaving] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const load = useCallback(async (term: string) => {
@@ -137,6 +139,34 @@ export default function ContactsClient() {
         return () => clearTimeout(t)
     }, [search, load])
 
+    async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault()
+        const f = e.currentTarget
+        const get = (n: string) => (f.elements.namedItem(n) as HTMLInputElement | HTMLTextAreaElement | null)?.value ?? ''
+        setSaving(true)
+        try {
+            const res = await createContact({
+                name: get('name'),
+                phone: get('phone'),
+                email: get('email') || undefined,
+                source: get('source') || undefined,
+                state: get('state') || undefined,
+                address: get('address') || undefined,
+                notes: get('notes') || undefined,
+                nriCountry: get('nriCountry') || undefined,
+            })
+            if (res.success) {
+                toast.success('Contact added')
+                setShowAdd(false)
+                await load(search)
+            } else {
+                toast.error(res.error || 'Failed to add contact')
+            }
+        } finally {
+            setSaving(false)
+        }
+    }
+
     const withDeals = rows.filter((r) => r.dealCount > 0).length
     const withBookings = rows.filter((r) => r.bookingCount > 0).length
 
@@ -173,6 +203,12 @@ export default function ContactsClient() {
                         className="flex items-center gap-2 px-3 py-2 border border-border text-foreground hover:bg-surface-hover rounded-xl text-sm font-medium"
                     >
                         <Download className="size-4" /> Export
+                    </button>
+                    <button
+                        onClick={() => setShowAdd(true)}
+                        className="flex items-center gap-2 px-3 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-sm font-semibold"
+                    >
+                        <Plus className="size-4" /> Add Contact
                     </button>
                 </div>
             </div>
@@ -274,6 +310,66 @@ export default function ContactsClient() {
                     </div>
                 )}
             </div>
+
+            {/* Add Contact modal */}
+            {showAdd && (
+                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center" role="dialog" aria-modal="true">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !saving && setShowAdd(false)} />
+                    <div className="relative w-full md:max-w-lg bg-surface border border-border shadow-2xl flex flex-col max-h-[92dvh] md:max-h-[85vh] rounded-t-3xl md:rounded-2xl md:mx-4">
+                        <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-border">
+                            <h2 className="text-base md:text-lg font-semibold text-foreground">Add Contact</h2>
+                            <button onClick={() => setShowAdd(false)} className="p-2 rounded-xl hover:bg-surface-hover text-muted hover:text-foreground" aria-label="Close">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreate} className="px-5 md:px-6 py-5 overflow-y-auto flex-1 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <Field label="Name *" name="name" required />
+                                <Field label="Phone *" name="phone" type="tel" required placeholder="+91 98765 43210" />
+                                <Field label="Email" name="email" type="email" />
+                                <div>
+                                    <label className="block text-xs font-medium text-muted mb-1.5">Source</label>
+                                    <select name="source" defaultValue="Manual" className="w-full px-3 py-2.5 bg-surface rounded-xl border border-border text-sm">
+                                        {['Manual', 'WhatsApp', 'Walk-in', 'Website', 'Referral', 'Channel Partner', 'Instagram', 'Facebook', 'IndiaMART', '99acres', 'MagicBricks', 'Housing'].map((s) => (
+                                            <option key={s} value={s}>{s}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <Field label="State" name="state" />
+                                <Field label="NRI Country (if any)" name="nriCountry" placeholder="e.g. UAE" />
+                            </div>
+                            <Field label="Address" name="address" />
+                            <div>
+                                <label className="block text-xs font-medium text-muted mb-1.5">Notes</label>
+                                <textarea name="notes" rows={2} className="w-full px-3 py-2.5 bg-surface rounded-xl border border-border text-sm" />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-1">
+                                <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-surface-hover">Cancel</button>
+                                <button type="submit" disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold disabled:opacity-50">
+                                    {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Add Contact
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+function Field({ label, name, type = 'text', required, placeholder }: {
+    label: string; name: string; type?: string; required?: boolean; placeholder?: string
+}) {
+    return (
+        <div>
+            <label className="block text-xs font-medium text-muted mb-1.5">{label}</label>
+            <input
+                name={name}
+                type={type}
+                required={required}
+                placeholder={placeholder}
+                className="w-full px-3 py-2.5 bg-surface rounded-xl border border-border text-sm"
+            />
         </div>
     )
 }

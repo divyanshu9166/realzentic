@@ -87,6 +87,7 @@ export default function LeadsPage() {
 
   // Convert-to-follow-up state
   const [showConvertModal, setShowConvertModal] = useState(false);
+  const [leadToConvert, setLeadToConvert] = useState(null);
   const [convertForm, setConvertForm] = useState({ followUpDate: '', reason: '', priority: 'Medium' });
   const [converting, setConverting] = useState(false);
 
@@ -288,13 +289,13 @@ export default function LeadsPage() {
   };
 
   const handleConvertToFollowUp = async () => {
-    if (!selectedLead || !convertForm.followUpDate) {
+    if (!leadToConvert || !convertForm.followUpDate) {
       notify('Please pick a follow-up date', { variant: 'danger' });
       return;
     }
     setConverting(true);
     const res = await convertLeadToFollowUp({
-      leadId: selectedLead.id,
+      leadId: leadToConvert.id,
       followUpDate: convertForm.followUpDate,
       reason: convertForm.reason || undefined,
       priority: convertForm.priority || undefined,
@@ -302,6 +303,7 @@ export default function LeadsPage() {
     setConverting(false);
     if (res.success) {
       setShowConvertModal(false);
+      setLeadToConvert(null);
       setConvertForm({ followUpDate: '', reason: '', priority: 'Medium' });
       setSelectedLead(null);
       await refresh();
@@ -557,11 +559,11 @@ export default function LeadsPage() {
       </Modal>
 
       {/* Convert to Follow-up Modal */}
-      <Modal isOpen={showConvertModal} onClose={() => setShowConvertModal(false)} title="Convert to Follow-up" size="md">
-        {selectedLead && (
+      <Modal isOpen={showConvertModal} onClose={() => { setShowConvertModal(false); setLeadToConvert(null); }} title="Convert to Follow-up" size="md">
+        {leadToConvert && (
           <div className="space-y-4">
             <p className="text-sm text-muted">
-              Schedule a future date to reconnect with <strong className="text-foreground">{selectedLead.name}</strong>.
+              Schedule a future date to reconnect with <strong className="text-foreground">{leadToConvert.name}</strong>.
               The lead is kept and linked, so nothing is lost.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -598,7 +600,7 @@ export default function LeadsPage() {
               />
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowConvertModal(false)} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-surface-hover">Cancel</button>
+              <button onClick={() => { setShowConvertModal(false); setLeadToConvert(null); }} className="px-4 py-2 rounded-lg text-sm text-muted hover:bg-surface-hover">Cancel</button>
               <button onClick={handleConvertToFollowUp} disabled={converting} className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold disabled:opacity-50">
                 {converting ? 'Converting...' : 'Create Follow-up'}
               </button>
@@ -637,7 +639,7 @@ export default function LeadsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setConvertForm({ followUpDate: '', reason: '', priority: 'Medium' }); setShowConvertModal(true); }}
+                    onClick={() => { setLeadToConvert(selectedLead); setConvertForm({ followUpDate: '', reason: '', priority: 'Medium' }); setSelectedLead(null); setShowConvertModal(true); }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-light text-purple border border-purple/20 hover:bg-purple/20"
                   >
                     <Clock className="w-3.5 h-3.5" /> Convert to Follow-up

@@ -14,6 +14,7 @@ export const taskTypeEnum = z.enum([
 
 export const taskPriorityEnum = z.enum(['Low', 'Medium', 'High'])
 export const taskStatusEnum = z.enum(['Open', 'Done', 'Cancelled'])
+export const taskRecurrenceEnum = z.enum(['none', 'daily', 'weekly', 'monthly'])
 
 export const createTaskSchema = z.object({
     title: z.string().trim().min(1, 'A task title is required').max(200),
@@ -21,6 +22,7 @@ export const createTaskSchema = z.object({
     type: taskTypeEnum.default('Follow-up'),
     priority: taskPriorityEnum.default('Medium'),
     dueDate: z.string().min(1, 'A due date is required'),
+    recurrence: taskRecurrenceEnum.default('none'),
     assignedToId: idSchema.optional().nullable(),
     contactId: idSchema.optional().nullable(),
     dealId: idSchema.optional().nullable(),
@@ -33,7 +35,9 @@ export const updateTaskSchema = z.object({
     type: taskTypeEnum.optional(),
     priority: taskPriorityEnum.optional(),
     dueDate: z.string().min(1).optional(),
+    recurrence: taskRecurrenceEnum.optional(),
     assignedToId: idSchema.optional().nullable(),
+    dealId: idSchema.optional().nullable(),
 })
 
 export const setTaskStatusSchema = z.object({
