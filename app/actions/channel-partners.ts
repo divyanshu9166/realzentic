@@ -415,6 +415,9 @@ export interface PartnerMetrics {
 }
 
 export async function getPartnerMetrics(): Promise<Result<PartnerMetrics>> {
+    if (process.env.DEMO_MODE === 'true') {
+        return { success: true, data: { partnerCount: 3, commissionByStatus: { Pending: { count: 2, amount: 120000 }, Approved: { count: 1, amount: 60000 }, Paid: { count: 5, amount: 450000 }, Disputed: { count: 0, amount: 0 } }, totalCommissionAmount: 630000, pendingPayoutTotal: 60000 } }
+    }
     try {
         await requireRole('ADMIN', 'MANAGER')
     } catch {
@@ -484,6 +487,7 @@ export interface PartnerRow {
 
 /** List all channel partners for the admin listing (Req 6.7). */
 export async function getPartners(): Promise<Result<PartnerRow[]>> {
+    if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
     try {
         await requireRole('ADMIN', 'MANAGER')
     } catch {
@@ -545,6 +549,7 @@ export interface CommissionRow {
 
 /** Commission ledger across all partners for the admin view (Req 6.7). */
 export async function getCommissions(): Promise<Result<CommissionRow[]>> {
+    if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
     try {
         await requireRole('ADMIN', 'MANAGER')
     } catch {
@@ -598,6 +603,7 @@ export interface PayoutBatchRow {
 
 /** List payout batches for the admin payout-batch management view (Req 6.6, 6.7). */
 export async function getPayoutBatches(): Promise<Result<PayoutBatchRow[]>> {
+    if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
     try {
         await requireRole('ADMIN', 'MANAGER')
     } catch {

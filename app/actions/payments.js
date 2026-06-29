@@ -13,6 +13,10 @@ const generateReferenceHash = (method, reference) => {
 };
 
 export async function getDailyPayments(filters = {}) {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoPayments } = await import('@/lib/demo-data');
+    return { success: true, data: demoPayments.map(p => ({ id: p.id, displayId: p.displayId, date: p.date, amount: p.amount, gstAmount: 0, type: 'IN', method: p.method, reference: null, chequeNumber: null, chequeDate: null, customerName: p.customerName, notes: p.notes, status: p.status, reconciled: false, isReversal: false, contact: null, receivedByStaff: null })) };
+  }
   try {
     const { startDate, endDate, method, type, search, status, reconciled } = filters;
     const where = {};
@@ -293,6 +297,9 @@ export async function reconcilePayments(paymentIds, bankRefNumbers = {}) {
 
 // NEW: Get payment reconciliation summary
 export async function getReconciliationSummary(filters = {}) {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: { unreconciledCount: 2, unreconciledAmount: 600000, unreconciledList: [], reconciledCount: 3, reconciledAmount: 1750000, bouncedChequeCount: 0, bouncedChequeAmount: 0, bouncedCheques: [] } };
+  }
   try {
     const { startDate, endDate, method } = filters;
     const where = {};
@@ -354,6 +361,9 @@ export async function getReconciliationSummary(filters = {}) {
 }
 
 export async function getDailyCashRegister(date) {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: { date, openingCash: 50000, closingCash: null, cashIn: 0, cashOut: 0, notes: '' } };
+  }
   try {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);

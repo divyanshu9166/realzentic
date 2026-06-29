@@ -64,6 +64,7 @@ function parseDateRange(fromDate: string, toDate: string) {
 // ─── CHART OF ACCOUNTS CRUD ──────────────────────────
 
 export async function seedChartOfAccounts() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, message: 'Demo mode: chart of accounts already exists' }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Manager access required' } }
   const existing = await prisma.ledgerAccount.count()
   if (existing > 0) return { success: true, message: 'Chart of accounts already exists' }
@@ -86,6 +87,7 @@ export async function seedChartOfAccounts() {
 }
 
 export async function getAccounts() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   const groups = await prisma.accountGroup.findMany({
     include: { accounts: { orderBy: { code: 'asc' } } },
     orderBy: { name: 'asc' },
@@ -110,6 +112,10 @@ export async function createAccount(data: unknown) {
 // Real Estate CRM: revenue tracked through DailyPayment (type='IN')
 
 export async function getProfitAndLoss(fromDate: string, toDate: string, compareFrom?: string, compareTo?: string) {
+  if (process.env.DEMO_MODE === 'true') {
+    const pl = { period: { from: fromDate, to: toDate }, paymentCount: 42, revenue: { total: 4200000, note: 'Demo' }, expenses: { directOutflows: 500000, salary: 800000, employerPFESI: 80000, total: 1380000 }, netProfit: 2820000, netMarginPct: 67.1, grossMarginPct: 67.1, grossProfit: 2820000 }
+    return { success: true, data: { current: pl, compare: null } }
+  }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const range = parseDateRange(fromDate, toDate)
@@ -183,6 +189,9 @@ export async function getProfitAndLoss(fromDate: string, toDate: string, compare
 // ─── BALANCE SHEET (Payment-based) ───────────────────
 
 export async function getBalanceSheet(asOfDate: string) {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: { asOfDate, currentAssets: { cashAndBank: 3200000, staffLoans: 50000, total: 3250000, accountsReceivable: 0, inventory: 0, itcReceivable: 0 }, totalAssets: 3250000, currentLiabilities: { salaryPayable: 130000, accountsPayable: 0, netGSTPayable: 0, gstOutput: 0, gstInput: 0, total: 130000 }, equity: { derived: 3120000, note: 'Demo' }, quality: { cashModel: 'Demo mode' } } }
+  }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const asOf = parseAsOfDate(asOfDate)
@@ -253,6 +262,9 @@ export async function getBalanceSheet(asOfDate: string) {
 // ─── CASH FLOW ────────────────────────────────────────
 
 export async function getCashFlow(fromDate: string, toDate: string) {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: { period: { from: fromDate, to: toDate }, operating: { inflow: { collections: 4200000, loanRepayments: 0, total: 4200000 }, outflow: { payments: 500000, salaries: 880000, total: 1380000 }, net: 2820000 }, investing: { net: 0, note: 'Demo' }, financing: { net: 0, note: 'Demo' }, netCashFlow: 2820000 } }
+  }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const range = parseDateRange(fromDate, toDate)
@@ -314,6 +326,9 @@ export async function getCashFlow(fromDate: string, toDate: string) {
 // ─── EXECUTIVE SUMMARY ────────────────────────────────
 
 export async function getExecutiveSummary(fromDate: string, toDate: string) {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: { revenue: 4200000, expenses: 1380000, netProfit: 2820000, netMarginPct: 67.1, cashAndBank: 3200000, totalAssets: 3250000, totalLiabilities: 130000, equity: 3120000, revenueChange: 18, profitChange: 22 } }
+  }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const range = parseDateRange(fromDate, toDate)
@@ -385,6 +400,7 @@ export async function getExecutiveSummary(fromDate: string, toDate: string) {
 // ─── TRIAL BALANCE (Payment-based) ───────────────────
 
 export async function getTrialBalance(asOfDate: string) {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: { asOfDate, lines: [], totalDebit: 0, totalCredit: 0 } }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const asOf = parseAsOfDate(asOfDate)
@@ -449,6 +465,7 @@ export async function getTrialBalance(asOfDate: string) {
 // Real Estate CRM: no Invoice model — return empty aging
 
 export async function getReceivablesAging() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: { summary: [], totalOutstanding: 0, totalCount: 0, risk: { over90Amount: 0, over90SharePct: 0, top5SharePct: 0, averageDaysPastDue: 0 }, note: 'Demo mode' } }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   return {
@@ -467,6 +484,7 @@ export async function getReceivablesAging() {
 // Real Estate CRM: no PurchaseOrder model — return empty aging
 
 export async function getPayablesAging() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: { summary: [], totalOutstanding: 0, totalCount: 0, risk: { over90Amount: 0, over90SharePct: 0, top5SharePct: 0, averageDaysPastDue: 0 }, note: 'Demo mode' } }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   return {
@@ -484,6 +502,7 @@ export async function getPayablesAging() {
 // ─── JOURNAL ENTRIES ─────────────────────────────────
 
 export async function getJournalEntries(fromDate?: string, toDate?: string) {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const where: Record<string, unknown> = {}
