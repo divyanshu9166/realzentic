@@ -4,6 +4,11 @@ import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 
 export async function getReviews() {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoReviews } = await import('@/lib/demo-data')
+    return { success: true, data: demoReviews }
+  }
+
   const reviews = await prisma.review.findMany({
     include: { contact: true },
     orderBy: { date: 'desc' },

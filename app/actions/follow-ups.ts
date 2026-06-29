@@ -87,6 +87,12 @@ async function findOrCreateContact(args: {
 // ─── List ──────────────────────────────────────────────────────────────────────
 
 export async function getFollowUps(filter?: { status?: FollowUpStatus }) {
+    if (process.env.DEMO_MODE === 'true') {
+        const { demoFollowUps } = await import('@/lib/demo-data')
+        const followUps = filter?.status ? demoFollowUps.filter(f => f.status === filter.status) : demoFollowUps
+        return { success: true as const, data: followUps }
+    }
+
     try {
         const where = filter?.status ? { status: filter.status } : {}
         const rows = await prisma.followUpEntry.findMany({

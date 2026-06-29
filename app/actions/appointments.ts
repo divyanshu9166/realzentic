@@ -5,6 +5,11 @@ import { revalidatePath } from 'next/cache'
 import { createAppointmentSchema } from '@/lib/validations/appointment'
 
 export async function getAppointments() {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoAppointments } = await import('@/lib/demo-data')
+    return { success: true, data: demoAppointments }
+  }
+
   const appointments = await prisma.appointment.findMany({
     include: { contact: true },
     orderBy: { date: 'desc' },

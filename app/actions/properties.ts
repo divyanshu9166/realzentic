@@ -402,6 +402,24 @@ export interface ProjectCard {
  * Booked + Sold counts and is `0` when a project has no units.
  */
 export async function listProjects(): Promise<Result<ProjectCard[]>> {
+    if (process.env.DEMO_MODE === 'true') {
+        const { demoProperties } = await import('@/lib/demo-data')
+        return {
+            success: true,
+            data: demoProperties.map(p => ({
+                id: p.id,
+                name: p.name,
+                location: p.location,
+                city: p.location.split(', ')[1] || 'Unknown',
+                state: 'State',
+                reraNumber: p.reraNumber,
+                photoUrl: null,
+                unitCount: p.totalUnits,
+                percentSold: Math.round(((p.soldUnits + p.bookedUnits) / p.totalUnits) * 100),
+            }))
+        }
+    }
+
     try {
         const projects = await prisma.project.findMany({
             orderBy: { createdAt: 'desc' },

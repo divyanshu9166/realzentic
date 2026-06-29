@@ -33,6 +33,12 @@ const statusDisplayMap: Record<LeadStatus, string> = {
 }
 
 export async function getLeads(status?: string) {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoLeads } = await import('@/lib/demo-data')
+    const filteredLeads = status ? demoLeads.filter(l => l.status === status) : demoLeads
+    return { success: true, data: filteredLeads }
+  }
+
   const where = status && statusMap[status] ? { status: statusMap[status] } : {}
 
   const leads = await prisma.lead.findMany({
@@ -67,6 +73,13 @@ export async function getLeads(status?: string) {
 }
 
 export async function getLead(id: number) {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoLeads } = await import('@/lib/demo-data')
+    const lead = demoLeads.find(l => l.id === id)
+    if (!lead) return { success: false, error: 'Lead not found' }
+    return { success: true, data: lead }
+  }
+
   const lead = await prisma.lead.findUnique({
     where: { id },
     include: { contact: true, followUps: true, assignedTo: true },

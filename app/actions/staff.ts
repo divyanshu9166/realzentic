@@ -84,6 +84,11 @@ const mapStaffForPortal = (s: any) => ({
 })
 
 export async function getStaff() {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoStaff } = await import('@/lib/demo-data')
+    return { success: true, data: demoStaff }
+  }
+
   const staff = await prisma.staff.findMany({
     include: staffPortalInclude,
     orderBy: { name: 'asc' },
@@ -96,6 +101,13 @@ export async function getStaff() {
 }
 
 export async function getStaffPortalProfile(staffId: number) {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoStaff } = await import('@/lib/demo-data')
+    const staff = demoStaff.find(s => s.id === staffId)
+    if (!staff) return { success: false, error: 'Staff not found' }
+    return { success: true, data: staff }
+  }
+
   let session
   try { session = await requireAuth() } catch { return { success: false, error: 'Unauthorized' } }
 
@@ -114,6 +126,13 @@ export async function getStaffPortalProfile(staffId: number) {
 }
 
 export async function getStaffMember(id: number) {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoStaff } = await import('@/lib/demo-data')
+    const staff = demoStaff.find(s => s.id === id)
+    if (!staff) return { success: false, error: 'Staff not found' }
+    return { success: true, data: staff }
+  }
+
   const staff = await prisma.staff.findUnique({
     where: { id },
     include: {

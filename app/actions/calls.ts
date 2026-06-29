@@ -6,6 +6,11 @@ import { createCallLogSchema } from '@/lib/validations/call'
 import type { CallDirection, CallStatus } from '@prisma/client'
 
 export async function getCallLogs() {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoCallLogs } = await import('@/lib/demo-data')
+    return { success: true, data: demoCallLogs }
+  }
+
   const calls = await prisma.callLog.findMany({
     include: { contact: true, transcript: true },
     orderBy: { date: 'desc' },

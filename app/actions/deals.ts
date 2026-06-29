@@ -396,6 +396,32 @@ export async function getDealAnalytics() {
  * payload is serializable across the server-action boundary.
  */
 export async function listDealsForBoard() {
+    if (process.env.DEMO_MODE === 'true') {
+        const { demoDeals } = await import('@/lib/demo-data')
+        const cards = demoDeals.map(d => ({
+            id: d.id,
+            stageId: d.stage === 'PROPOSAL' ? 1 : d.stage === 'NEGOTIATION' ? 2 : d.stage === 'BOOKING' ? 3 : 4,
+            value: d.dealValue,
+            contactName: d.buyerName,
+            contactPhone: d.phone,
+            unitNumber: d.unitNumber,
+            agentName: d.assignedTo,
+            aiScore: 85,
+            isHot: true,
+            isAtRisk: false,
+            expectedCloseDate: d.closingDate,
+            source: 'Website',
+            hasBooking: d.tokenAmount > 0,
+        }))
+        const columns = [
+            { id: 1, name: 'Proposal', order: 1, color: '#3b82f6', isWon: false, isLost: false, deals: cards.filter(c => c.stageId === 1) },
+            { id: 2, name: 'Negotiation', order: 2, color: '#f59e0b', isWon: false, isLost: false, deals: cards.filter(c => c.stageId === 2) },
+            { id: 3, name: 'Booking', order: 3, color: '#10b981', isWon: true, isLost: false, deals: cards.filter(c => c.stageId === 3) },
+            { id: 4, name: 'Agreement', order: 4, color: '#8b5cf6', isWon: true, isLost: false, deals: cards.filter(c => c.stageId === 4) },
+        ]
+        return { success: true, data: { columns } }
+    }
+
     const [stages, deals] = await Promise.all([
         prisma.dealStage.findMany({ orderBy: { order: 'asc' } }),
         prisma.deal.findMany({

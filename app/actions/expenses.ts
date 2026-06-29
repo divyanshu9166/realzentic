@@ -360,6 +360,11 @@ export async function updateCashRegister(data: unknown) {
 // ─── ANALYTICS & REPORTS ──────────────────────────────
 
 export async function getExpenseSummary(fromDate: string, toDate: string) {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoExpenseSummary } = await import('@/lib/demo-data')
+    return { success: true, data: demoExpenseSummary }
+  }
+
   const from = new Date(fromDate + 'T00:00:00')
   const to = new Date(toDate + 'T23:59:59')
 

@@ -15,6 +15,11 @@ const statusDisplay: Record<WalkinStatus, string> = {
 }
 
 export async function getWalkins() {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoWalkins } = await import('@/lib/demo-data')
+    return { success: true, data: demoWalkins }
+  }
+
   const walkins = await prisma.walkin.findMany({
     include: { contact: true, assignedTo: true },
     orderBy: { date: 'desc' },

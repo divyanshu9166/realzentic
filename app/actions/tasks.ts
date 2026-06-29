@@ -76,10 +76,13 @@ const taskInclude = {
 } as const
 
 /** List tasks, optionally filtered by status and/or assignee. */
-export async function getTasks(filters: { status?: string; assignedToId?: number } = {}): Promise<{
-    success: boolean
-    data: TaskRow[]
-}> {
+export async function getTasks(filters: { status?: string; assignedToId?: number } = {}): Promise<Result<TaskRow[]>> {
+    if (process.env.DEMO_MODE === 'true') {
+        const { demoTasks } = await import('@/lib/demo-data')
+        const filteredTasks = filters.status ? demoTasks.filter(t => t.status === filters.status) : demoTasks
+        return { success: true, data: filteredTasks as unknown as TaskRow[] }
+    }
+
     try {
         const where: Record<string, unknown> = {}
         if (filters.status) where.status = filters.status

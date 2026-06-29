@@ -18,6 +18,11 @@ const leadStatusLabel: Record<string, string> = {
 }
 
 export async function getDashboardStats() {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoDashboardStats } = await import('@/lib/demo-data')
+    return { success: true, data: demoDashboardStats }
+  }
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayEnd = new Date()
