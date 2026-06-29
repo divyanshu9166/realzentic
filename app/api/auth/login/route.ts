@@ -8,6 +8,30 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { email, password, staffId, type } = body
 
+    // ─── DEMO MODE ──────────────────────────────────────────────────────────
+    // When DEMO_MODE=true (set in Vercel env vars), accept hardcoded demo
+    // credentials without touching the database. Safe for showcase only.
+    if (process.env.DEMO_MODE === 'true' && type === 'credentials') {
+      const DEMO_EMAIL = 'demo@realzentic.com'
+      const DEMO_PASS  = 'Demo@1234'
+      if (
+        String(email).trim().toLowerCase() === DEMO_EMAIL &&
+        String(password) === DEMO_PASS
+      ) {
+        await createSession({
+          id: '1',
+          email: DEMO_EMAIL,
+          name: 'Demo Admin',
+          role: 'ADMIN',
+          staffId: null,
+        })
+        return NextResponse.json({ success: true })
+      }
+      // Wrong demo credentials
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     if (type === 'credentials') {
       if (!email || !password) {
         return NextResponse.json({ error: 'Missing email or password' }, { status: 400 })
