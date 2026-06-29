@@ -81,6 +81,9 @@ async function loadConfig(): Promise<ReminderConfigView> {
 }
 
 export async function getReminderConfig() {
+    if (process.env.DEMO_MODE === 'true') {
+        return { success: true as const, data: DEFAULT_CONFIG }
+    }
     try {
         await requireRole('ADMIN', 'MANAGER')
     } catch {

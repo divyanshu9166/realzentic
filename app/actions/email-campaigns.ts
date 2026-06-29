@@ -37,6 +37,7 @@ const campaignSchema = z.object({
 // ─── EMAIL TEMPLATES ────────────────────────────────
 
 export async function getEmailTemplates() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   const templates = await prisma.emailTemplate.findMany({
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { campaigns: true } } },
@@ -91,6 +92,7 @@ export async function deleteEmailTemplate(id: number) {
 // ─── EMAIL CAMPAIGNS ────────────────────────────────
 
 export async function getEmailCampaigns() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   const campaigns = await prisma.emailCampaign.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
@@ -196,6 +198,7 @@ export async function deleteEmailCampaign(id: number) {
 // ─── AUDIENCE / RECIPIENTS ──────────────────────────
 
 export async function getAudienceStats() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: { total: 0, withEmail: 0, subscribed: 0, leads: 0, customers: 0 } }
   const [total, withEmail, subscribed, leads, customers] = await Promise.all([
     prisma.contact.count(),
     prisma.contact.count({ where: { email: { not: null } } }),
@@ -211,6 +214,7 @@ export async function getAudienceStats() {
 }
 
 export async function getAudiencePreview(audience: string) {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: { contacts: [], totalCount: 0 } }
   const where: Record<string, unknown> = { email: { not: null }, emailSubscribed: true }
 
   if (audience === 'leads') {
@@ -380,6 +384,7 @@ export async function sendSmtpTestEmail(config: {
 }
 
 export async function getEmailConfigStatus() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, configured: false, smtpHost: null, smtpUser: null, fromName: null }
   const config = await getSmtpConfig()
   return {
     success: true,
@@ -393,6 +398,7 @@ export async function getEmailConfigStatus() {
 // ─── CAMPAIGN ANALYTICS ─────────────────────────────
 
 export async function getCampaignAnalytics(campaignId: number) {
+  if (process.env.DEMO_MODE === 'true') return { success: false, error: 'Campaign not found in demo mode' }
   const campaign = await prisma.emailCampaign.findUnique({
     where: { id: campaignId },
     include: {
@@ -563,6 +569,7 @@ export async function recordEmailEvent(recipientId: number, type: 'open' | 'clic
 // ─── AUTOMATED CAMPAIGN HELPERS ─────────────────────
 
 export async function getAutomatedCampaigns() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   const campaigns = await prisma.emailCampaign.findMany({
     where: { isAutomated: true },
     orderBy: { createdAt: 'desc' },

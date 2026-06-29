@@ -14,6 +14,7 @@ const SOCIAL_WEBHOOK_CHANNELS = new Set(['Instagram', 'Facebook'])
 // ─── GET ALL CHANNEL CONFIGS ────────────────────────
 
 export async function getChannelConfigs() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   const configs = await prisma.channelConfig.findMany({
     orderBy: { channel: 'asc' },
   })

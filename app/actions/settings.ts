@@ -218,6 +218,7 @@ export async function updateStoreSettings(data: unknown) {
 }
 
 export async function getMarketplaceChannels() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   const channels = await prisma.marketplaceChannel.findMany({
     orderBy: { name: 'asc' },
   })
@@ -248,6 +249,7 @@ export async function updateMarketplaceChannel(id: number, data: { connected?: b
 }
 
 export async function getStoreCampaigns() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   const campaigns = await prisma.storeCampaign.findMany({
     orderBy: { createdAt: 'desc' },
   })

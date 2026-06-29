@@ -85,6 +85,7 @@ export async function updatePassword(data: unknown) {
 }
 
 export async function listUsers() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   try { await requireRole('ADMIN') } catch { return { success: false, error: 'Admin access required', data: [] } }
   const users = await prisma.user.findMany({
     select: {

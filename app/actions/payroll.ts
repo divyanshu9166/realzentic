@@ -11,6 +11,7 @@ import { z } from 'zod'
 // (Like Keka / GreytHR's "Attendance Summary" pre-payroll screen)
 
 export async function getAttendanceSummaryForPayroll(period: string) {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied', data: [] } }
 
   const [year, month] = period.split('-').map(Number)
@@ -161,6 +162,7 @@ function overtimeHoursFromAttendance(entries: { status: string; hours: number | 
 // ─── PRE-PAYROLL READINESS ──────────────────────────
 
 export async function getPayrollReadiness(period?: string) {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: { period: period || '2026-06', activeStaff: 3, blockers: [], warnings: [], details: { missingBasic: [], missingBankDetails: [], missingPFCompliance: [], missingESICompliance: [], missingPanForTds: [], noAttendanceConfigured: [] } } }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const targetPeriod = period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
@@ -245,6 +247,7 @@ export async function getPayrollReadiness(period?: string) {
 // ─── STAFF PAYROLL SETTINGS ──────────────────────────
 
 export async function getStaffForPayroll() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied', data: [] } }
 
   const staff = await prisma.staff.findMany({
@@ -288,6 +291,7 @@ const loanSchema = z.object({
 })
 
 export async function getStaffLoans(staffId?: number) {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied', data: [] } }
 
   const loans = await prisma.staffLoan.findMany({
@@ -524,6 +528,7 @@ export async function generatePayroll(data: unknown) {
 // ─── PAYROLL RUNS ────────────────────────────────────
 
 export async function getPayrollHistory() {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied', data: [] } }
 
   const runs = await prisma.payrollRun.findMany({
@@ -534,6 +539,7 @@ export async function getPayrollHistory() {
 }
 
 export async function getPayrollRun(id: number) {
+  if (process.env.DEMO_MODE === 'true') return { success: false, error: 'Demo mode: payroll run not found' }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied' } }
 
   const run = await prisma.payrollRun.findUnique({
@@ -559,6 +565,7 @@ export async function getPayrollRun(id: number) {
 }
 
 export async function getAllPayslips(period?: string) {
+  if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
   try { await requireRole('ADMIN', 'MANAGER') } catch { return { success: false, error: 'Access denied', data: [] } }
 
   const payslips = await prisma.payslip.findMany({
