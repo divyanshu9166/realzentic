@@ -17,7 +17,20 @@ type NotificationItem = {
 
 export async function getTopNotifications() {
   if (process.env.DEMO_MODE === 'true') {
-    return { success: true, data: { unreadMessages: 3, pendingTasks: 2, messages: [], tasks: [] } }
+    return {
+      success: true,
+      data: {
+        unreadCount: 3,
+        unreadConversationsCount: 2,
+        pendingFollowUps: 1,
+        overdueInvoices: 0,
+        unreadAlerts: 0,
+        items: [
+          { id: 'conversation-1', type: 'conversation', title: 'Rahul Sharma sent 2 unread messages', subtitle: 'Interested in 3BHK at Seabreeze Residency', date: new Date().toISOString(), href: '/conversations', unread: 2 },
+          { id: 'followup-1', type: 'followup', title: 'Follow-up due: Priya Mehta', subtitle: 'Follow up on Skyline Business Park proposal', date: new Date().toISOString(), href: '/leads' },
+        ],
+      }
+    }
   }
 
   const now = new Date()

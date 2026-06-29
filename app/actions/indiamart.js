@@ -148,6 +148,22 @@ async function ensureIndiaMartConfig() {
 }
 
 export async function getIndiaMartConfig() {
+  if (process.env.DEMO_MODE === 'true') {
+    return {
+      success: true,
+      data: {
+        enabled: false,
+        hasPullApiKey: false,
+        autoImportToLeads: false,
+        defaultLeadStatus: 'NEW',
+        overlapMinutes: 15,
+        lastSyncRun: null,
+        totalSynced: 0,
+        totalImported: 0,
+      }
+    }
+  }
+
   try {
     const [config, totalSynced, totalImported] = await Promise.all([
       ensureIndiaMartConfig(),
