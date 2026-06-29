@@ -8,7 +8,27 @@ import type { CallDirection, CallStatus } from '@prisma/client'
 export async function getCallLogs() {
   if (process.env.DEMO_MODE === 'true') {
     const { demoCallLogs } = await import('@/lib/demo-data')
-    return { success: true, data: demoCallLogs }
+    return {
+      success: true,
+      data: demoCallLogs.map(c => ({
+        id: c.id,
+        customer: c.customerName,
+        phone: c.phone,
+        direction: c.direction === 'INBOUND' ? 'Inbound' : 'Outbound',
+        status: c.status.charAt(0) + c.status.slice(1).toLowerCase().replace('_', ' '),
+        duration: c.duration,
+        durationSec: c.durationSec,
+        agent: c.agent,
+        date: c.date,
+        time: c.time,
+        purpose: c.purpose,
+        outcome: c.outcome,
+        notes: c.notes,
+        recording: null,
+        aiHandled: c.aiHandled,
+        callType: c.callType,
+      }))
+    }
   }
 
   const calls = await prisma.callLog.findMany({

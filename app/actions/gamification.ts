@@ -213,6 +213,9 @@ export async function createBadge(data: unknown) {
 
 /** List all Badge definitions. */
 export async function listBadges() {
+    if (process.env.DEMO_MODE === 'true') {
+        return { success: true, data: [] }
+    }
     const badges = await prisma.badge.findMany({ orderBy: { id: 'asc' } })
     return { success: true, data: badges }
 }
@@ -228,38 +231,37 @@ export async function listBadges() {
  * by the unique constraint on `AgentBadge(staffId, badgeId, period)`: a
  * duplicate `create` raises P2002, which is caught and treated as a no-op. This
  * makes the action idempotent — repeated invocations never create more than one
- * AgentBadge for a combination (design Property 49).
- *
- * Returns the badges newly awarded by this invocation (already-held badges are
- * not re-reported).
+ * AgentBadge record.
  */
-export async function awardBadges(data: unknown) {
-    const parsed = awardBadgesSchema.safeParse(data)
-    if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
+export async function awardBadges(staffId: number, period: string) {
+    if (process.env.DEMO_MODE === 'true') return { success: true, data: { awarded: [] } }
 
-    const { staffId, period } = parsed.data
+    const parsedPeriod = periodSchema.safeParse(period)
+    if (!parsedPeriod.success) return { success: false, error: parsedPeriod.error.issues[0].message }
 
-    const score = await prisma.agentScore.findUnique({
-        where: { staffId_period: { staffId, period } },
-    })
-    // No score for the period means there are no metrics to evaluate against.
-    const metrics = toMetrics(score?.metrics)
+    const [agentScore, allBadges] = await Promise.all([
+        prisma.agentScore.findUnique({ where: { staffId_period: { staffId, period: parsedPeriod.data } } }),
+        prisma.badge.findMany(),
+    ])
 
-    const badges = await prisma.badge.findMany()
-    const newlyAwarded: { badgeId: number; name: string }[] = []
+    if (!agentScore) return { success: false, error: 'Agent score not found for period' }
 
-    for (const badge of badges) {
-        if (!isBadgeEarned(metrics, (badge.criteria ?? {}) as BadgeCriteria)) {
-            continue
-        }
+    const earned = allBadges.filter((b) => isBadgeEarned(toMetrics(agentScore.metrics), (b.criteria ?? {}) as BadgeCriteria))
+    const newlyAwarded: string[] = []
+
+    for (const b of earned) {
         try {
             await prisma.agentBadge.create({
-                data: { staffId, badgeId: badge.id, period },
+                data: {
+                    staffId,
+                    badgeId: b.id,
+                    period: parsedPeriod.data,
+                },
             })
-            newlyAwarded.push({ badgeId: badge.id, name: badge.name })
-        } catch (err) {
-            // Unique violation -> badge already awarded for this period; skip.
-            if (!isUniqueViolation(err)) throw err
+            newlyAwarded.push(b.name)
+        } catch (e: any) {
+            // Ignore P2002 (Unique constraint failed): badge already awarded this period.
+            if (!isUniqueViolation(e)) throw e
         }
     }
 
@@ -269,6 +271,8 @@ export async function awardBadges(data: unknown) {
 
 /** List the badges an agent has earned, optionally filtered to a period. */
 export async function getAgentBadges(staffId: number, period?: string) {
+    if (process.env.DEMO_MODE === 'true') return { success: true, data: [] }
+
     let resolvedPeriod: string | undefined
     if (period !== undefined) {
         const parsedPeriod = periodSchema.safeParse(period)
