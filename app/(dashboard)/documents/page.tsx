@@ -27,17 +27,29 @@ function toISO(value: Date | null | undefined): string | null {
 }
 
 export default async function DocumentsPage() {
-    const [documents, templates, kycRecords, expiringRes, contactsRes] = await Promise.all([
-        prisma.document.findMany({ orderBy: { createdAt: 'desc' }, take: 500 }),
-        prisma.documentTemplate.findMany({ orderBy: { name: 'asc' } }),
-        prisma.kYCRecord.findMany({
-            orderBy: { id: 'desc' },
-            take: 500,
-            include: { contact: { select: { name: true } } },
-        }),
-        listExpiringDocuments(DEFAULT_EXPIRY_WINDOW_DAYS),
-        listContactsBrief(),
-    ]);
+    let documents: any[] = [];
+    let templates: any[] = [];
+    let kycRecords: any[] = [];
+    let expiringRes: any = { success: true, data: [] };
+    let contactsRes: any = { success: true, data: [] };
+
+    if (process.env.DEMO_MODE === 'true') {
+        documents = [];
+        templates = [];
+        kycRecords = [];
+    } else {
+        [documents, templates, kycRecords, expiringRes, contactsRes] = await Promise.all([
+            prisma.document.findMany({ orderBy: { createdAt: 'desc' }, take: 500 }),
+            prisma.documentTemplate.findMany({ orderBy: { name: 'asc' } }),
+            prisma.kYCRecord.findMany({
+                orderBy: { id: 'desc' },
+                take: 500,
+                include: { contact: { select: { name: true } } },
+            }),
+            listExpiringDocuments(DEFAULT_EXPIRY_WINDOW_DAYS),
+            listContactsBrief(),
+        ]);
+    }
 
     const documentRows: DocumentRow[] = documents.map((d) => ({
         id: d.id,

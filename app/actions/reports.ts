@@ -74,6 +74,21 @@ export interface CrmReports {
 }
 
 export async function getCrmReports(): Promise<Result<CrmReports>> {
+    if (process.env.DEMO_MODE === 'true') {
+        return {
+            success: true,
+            data: {
+                generatedAt: new Date().toISOString(),
+                leads: { total: 45, funnel: [], bySource: [], conversionRate: 15 },
+                deals: { total: 10, openValue: 50000000, byStage: [] },
+                bookings: { count: 3, agreementValue: 25000000 },
+                collections: { totalDemanded: 20000000, totalCollected: 15000000, overdueAmount: 500000, overdueCount: 1 },
+                inventory: { totalUnits: 100, bookedUnits: 15, soldUnits: 5, absorptionRate: 20, availableStockValue: 800000000 },
+                topAgents: [{ agentId: 1, name: 'Rohan Desai', wonDeals: 3, wonValue: 15000000 }],
+            }
+        }
+    }
+
     try {
         await requireRole('ADMIN', 'MANAGER')
     } catch {

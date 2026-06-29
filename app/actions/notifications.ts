@@ -16,6 +16,10 @@ type NotificationItem = {
 }
 
 export async function getTopNotifications() {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: { unreadMessages: 3, pendingTasks: 2, messages: [], tasks: [] } }
+  }
+
   const now = new Date()
   const followUpWhere = {
     sent: false,

@@ -210,10 +210,16 @@ export async function getFieldVisits(filters: {
   startDate?: string
   endDate?: string
 } = {}) {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoFieldVisits } = await import('@/lib/demo-data')
+    return { success: true as const, data: demoFieldVisits as any }
+  }
+
   try {
     const where: Record<string, unknown> = {}
     if (filters.staffId) where.staffId = filters.staffId
     if (filters.status) where.status = filters.status
+    
     if (filters.startDate || filters.endDate) {
       const dateFilter: Record<string, Date> = {}
       if (filters.startDate) {
@@ -235,6 +241,7 @@ export async function getFieldVisits(filters: {
         staff: { select: { id: true, name: true, role: true } },
       },
       orderBy: { scheduledDate: 'desc' },
+    })
       take: 100,
     })
 

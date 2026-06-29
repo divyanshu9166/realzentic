@@ -174,6 +174,9 @@ export async function upsertAgentScore(data: unknown) {
 
 /** Fetch a single agent's score for a period, or `null` when none exists. */
 export async function getAgentScore(staffId: number, period: string) {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: { staffId, period, points: 1250, details: {} } }
+  }
     const parsedPeriod = periodSchema.safeParse(period)
     if (!parsedPeriod.success) return { success: false, error: parsedPeriod.error.issues[0].message }
 
@@ -297,6 +300,9 @@ export async function getAgentBadges(staffId: number, period?: string) {
  * ranked row for the UI.
  */
 export async function getLeaderboard(data: unknown) {
+  if (process.env.DEMO_MODE === 'true') {
+    return { success: true, data: [{ staffId: 1, staffName: 'Rohan Desai', points: 1250, currentRank: 1, previousRank: 2, badges: [] }] }
+  }
     const parsed = leaderboardSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
 

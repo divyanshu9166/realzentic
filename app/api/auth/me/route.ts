@@ -11,6 +11,20 @@ export async function GET() {
     }
 
     const userId = Number(session.id)
+
+    if (process.env.DEMO_MODE === 'true') {
+      return NextResponse.json({
+        user: {
+          id: session.id,
+          email: session.email,
+          name: session.name,
+          role: session.role,
+          staffId: session.staffId,
+          created_at: new Date().toISOString(),
+        }
+      })
+    }
+
     const user = Number.isFinite(userId)
       ? await prisma.user.findUnique({
           where: { id: userId },

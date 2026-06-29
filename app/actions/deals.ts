@@ -69,6 +69,18 @@ function toNumber(value: unknown): number {
 
 /** List all deal stages ordered by their pipeline position. */
 export async function listDealStages() {
+    if (process.env.DEMO_MODE === 'true') {
+        return {
+            success: true,
+            data: [
+                { id: 1, name: 'Proposal', order: 1, color: '#3b82f6', isWon: false, isLost: false },
+                { id: 2, name: 'Negotiation', order: 2, color: '#f59e0b', isWon: false, isLost: false },
+                { id: 3, name: 'Booking', order: 3, color: '#10b981', isWon: true, isLost: false },
+                { id: 4, name: 'Agreement', order: 4, color: '#8b5cf6', isWon: true, isLost: false },
+            ]
+        }
+    }
+
     const stages = await prisma.dealStage.findMany({ orderBy: { order: 'asc' } })
     return { success: true, data: stages }
 }
@@ -1251,6 +1263,10 @@ export async function recordMilestonePayment(milestoneId: number, amount: number
  * Requirements: 9.6
  */
 export async function getOverdueCollections(now: Date = new Date()) {
+    if (process.env.DEMO_MODE === 'true') {
+        return { success: true as const, data: { totalOverdue: 0, overdueCount: 0, criticalCount: 0 } }
+    }
+
     const milestones = await prisma.bookingMilestone.findMany({
         where: { status: { not: 'Paid' } },
         select: { amount: true, paidAmount: true, dueDate: true, status: true },

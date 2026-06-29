@@ -123,6 +123,11 @@ export async function createContact(input: CreateContactInput) {
 // Site Visit 2.0 feedback "create deal" follow-up). Read-only.
 
 export async function listContactsBrief() {
+  if (process.env.DEMO_MODE === 'true') {
+    const { demoContacts } = await import('@/lib/demo-data')
+    return { success: true as const, data: demoContacts }
+  }
+
   try {
     const contacts = await prisma.contact.findMany({
       select: { id: true, name: true, phone: true },
