@@ -301,7 +301,7 @@ export async function getAgentBadges(staffId: number, period?: string) {
  */
 export async function getLeaderboard(data: unknown) {
   if (process.env.DEMO_MODE === 'true') {
-    return { success: true, data: [{ staffId: 1, staffName: 'Rohan Desai', points: 1250, currentRank: 1, previousRank: 2, badges: [] }] }
+    return { success: true, data: { rows: [{ staffId: 1, staffName: 'Rohan Desai', points: 1250, currentRank: 1, previousRank: 2, badges: [] }] } }
   }
     const parsed = leaderboardSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
