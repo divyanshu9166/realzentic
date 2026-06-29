@@ -241,7 +241,6 @@ export async function getFieldVisits(filters: {
         staff: { select: { id: true, name: true, role: true } },
       },
       orderBy: { scheduledDate: 'desc' },
-    })
       take: 100,
     })
 
