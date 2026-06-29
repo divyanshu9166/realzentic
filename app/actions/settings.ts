@@ -80,6 +80,26 @@ async function readWhatsappNumberFromDb() {
 }
 
 export async function getStoreSettings() {
+  // Demo mode: return default settings without touching the DB
+  if (process.env.DEMO_MODE === 'true') {
+    return {
+      success: true,
+      data: {
+        storeName: 'RealZentic CRM',
+        phone: null, whatsappNumber: null, email: null, address: null,
+        paymentQr: null, invoicePrefix: 'INV-', invoicePadding: 4,
+        invoiceTerms: null, bankName: null, bankAccountName: null,
+        bankAccountNumber: null, bankIfsc: null, bankUpiId: null,
+        gstNumber: null, gstRate: 18.0, currency: 'INR', logo: null,
+        storeLat: null, storeLng: null, geofenceRadius: 100,
+        shiftStartTime: '09:00', shiftEndTime: '20:00',
+        smtpHost: null, smtpPort: 587, smtpUser: null, smtpPass: null,
+        smtpFromName: null, smtpSecure: false, smtpConfigured: false,
+      },
+    }
+  }
+
+  try {
   let settings = await prisma.storeSettings.findFirst({ where: { id: 1 } })
   if (!settings) {
     settings = await prisma.storeSettings.create({
@@ -129,6 +149,10 @@ export async function getStoreSettings() {
       smtpSecure: settings.smtpSecure,
       smtpConfigured: settings.smtpConfigured,
     },
+  }
+  } catch (err) {
+    console.error('[getStoreSettings] DB unavailable:', err instanceof Error ? err.message : err)
+    return { success: false, error: 'DB unavailable' }
   }
 }
 
