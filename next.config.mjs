@@ -5,7 +5,9 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // NOTE: 'standalone' output is used by Docker (Dockerfile).
+  // Vercel manages its own output — do not set output:'standalone' here
+  // or Vercel will mishandle the build. Dockerfile overrides this at build time.
   typescript: {
     ignoreBuildErrors: true,
   },
