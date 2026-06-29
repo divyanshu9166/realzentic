@@ -82,8 +82,8 @@ export async function getCrmReports(): Promise<Result<CrmReports>> {
                 leads: { total: 45, funnel: [], bySource: [], conversionRate: 15 },
                 deals: { total: 10, openValue: 50000000, byStage: [] },
                 bookings: { count: 3, agreementValue: 25000000 },
-                collections: { totalDemanded: 20000000, totalCollected: 15000000, overdueAmount: 500000, overdueCount: 1 },
-                inventory: { totalUnits: 100, bookedUnits: 15, soldUnits: 5, absorptionRate: 20, availableStockValue: 800000000 },
+                collections: { demanded: 20000000, collected: 15000000, outstanding: 5000000, overdueMilestones: 1, collectionRate: 75 },
+                inventory: { totalUnits: 100, byStatus: [], absorptionRate: 20, availableStockValue: 800000000 },
                 topAgents: [{ agentId: 1, name: 'Rohan Desai', wonDeals: 3, wonValue: 15000000 }],
             }
         }
