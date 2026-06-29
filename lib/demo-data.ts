@@ -219,21 +219,28 @@ export const demoDashboardStats = {
 
 // ─── Expense Summary ─────────────────────────────────────────────────────────
 export const demoExpenseSummary = {
-  totalExpenses: 187500,
-  expensesByCategory: [
-    { category: 'Marketing', total: 75000 },
-    { category: 'Travel', total: 42000 },
-    { category: 'Office Supplies', total: 18500 },
-    { category: 'Client Entertainment', total: 32000 },
-    { category: 'Technology', total: 20000 },
+  grandTotal: 187500,
+  dailyAverage: 6250,
+  totalBudget: 200000,
+  categoryBreakdown: [
+    { categoryId: 1, categoryName: 'Marketing', categoryColor: '#F97316', categoryIcon: 'Megaphone', count: 5, budget: 80000, total: 75000 },
+    { categoryId: 2, categoryName: 'Travel', categoryColor: '#6366F1', categoryIcon: 'Truck', count: 12, budget: 50000, total: 42000 },
+    { categoryId: 3, categoryName: 'Office Supplies', categoryColor: '#64748B', categoryIcon: 'FileText', count: 8, budget: 20000, total: 18500 },
+    { categoryId: 4, categoryName: 'Client Entertainment', categoryColor: '#A855F7', categoryIcon: 'Coffee', count: 4, budget: 30000, total: 32000 },
+    { categoryId: 5, categoryName: 'Technology', categoryColor: '#0EA5E9', categoryIcon: 'Wrench', count: 2, budget: 20000, total: 20000 },
   ],
-  monthlyTrend: [
-    { month: 'Jan', amount: 145000 },
-    { month: 'Feb', amount: 162000 },
-    { month: 'Mar', amount: 198000 },
-    { month: 'Apr', amount: 154000 },
-    { month: 'May', amount: 171000 },
-    { month: 'Jun', amount: 187500 },
+  topVendors: [
+    { vendor: 'Google Ads', count: 2, total: 50000 },
+    { vendor: 'Facebook Ads', count: 3, total: 25000 },
+    { vendor: 'Uber', count: 10, total: 12000 },
+    { vendor: 'Taj Hotel', count: 2, total: 25000 },
+  ],
+  dailyTotals: [
+    { date: '2026-06-25', total: 12000 },
+    { date: '2026-06-26', total: 45000 },
+    { date: '2026-06-27', total: 8000 },
+    { date: '2026-06-28', total: 32000 },
+    { date: '2026-06-29', total: 15000 },
   ],
 }
 
