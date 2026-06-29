@@ -242,6 +242,11 @@ export const demoExpenseSummary = {
     { date: '2026-06-28', total: 32000 },
     { date: '2026-06-29', total: 15000 },
   ],
+  paymentModeBreakdown: [
+    { mode: 'Credit Card', total: 100000, count: 12 },
+    { mode: 'Bank Transfer', total: 50000, count: 5 },
+    { mode: 'Cash', total: 37500, count: 14 },
+  ],
 }
 
 // ─── Reviews ─────────────────────────────────────────────────────────────────
