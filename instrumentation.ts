@@ -13,7 +13,7 @@
 export async function register() {
   // Only start the worker in the Node.js runtime, not in the edge runtime
   // (which doesn't support ioredis / worker_threads).
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.DEMO_MODE !== 'true') {
     const { startAutomationWorker } = await import('./lib/queues/automation-worker')
     startAutomationWorker()
 
