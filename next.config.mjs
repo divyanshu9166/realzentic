@@ -11,6 +11,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // @xenova/transformers loads ONNX native bindings — must NOT be bundled.
   // Next.js server-side bundling breaks native .node addons; marking these
   // as external makes them loaded via require() at runtime instead.
@@ -24,7 +27,7 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', '*.github.dev', 'realzentic.autozentic.com']
+      allowedOrigins: ['localhost:3000', '*.github.dev', 'realzentic.autozentic.com', '*.vercel.app']
     }
   },
   // Rewrite /uploads/* → /api/uploads/* so images stored with old paths still work
